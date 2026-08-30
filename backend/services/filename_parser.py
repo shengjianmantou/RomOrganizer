@@ -188,7 +188,10 @@ def parse_rom_filename(filename: str) -> ParsedRomName:
         (stem.find("(") if "(" in stem else len(stem)),
         (stem.find("[") if "[" in stem else len(stem)),
     )
-    result.clean_title = stem[:title_end].strip().rstrip(",-").strip()
+    raw_title = stem[:title_end].strip().rstrip(",-_ ").strip()
+    # Normalize underscores to spaces if filename uses snake_case
+    cleaned = re.sub(r"[_\s]+", " ", raw_title).strip()
+    result.clean_title = cleaned or stem[:title_end].strip()
 
     all_tags = paren_tags + bracket_tags
 

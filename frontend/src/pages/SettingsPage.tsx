@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Save, RefreshCw, Database, Key } from 'lucide-react'
-import { fetchSettings, updateSettings } from '../hooks/api'
+import { fetchSettings, updateSettings, rematchLibrary } from '../hooks/api'
 
 export default function SettingsPage() {
   const queryClient = useQueryClient()
@@ -20,6 +20,7 @@ export default function SettingsPage() {
   })
 
   const [saved, setSaved] = useState(false)
+  const [rematchResult, setRematchResult] = useState('')
 
   // Populate form when settings load
   useState(() => {
@@ -41,6 +42,19 @@ export default function SettingsPage() {
       setSaved(true)
       queryClient.invalidateQueries({ queryKey: ['settings'] })
       setTimeout(() => setSaved(false), 3000)
+    },
+  })
+
+  const rematchMutation = useMutation({
+    mutationFn: rematchLibrary,
+    onSuccess: (data) => {
+      setRematchResult(`✓ Successfully updated ${data.updated} games using loaded DATs!`)
+      queryClient.invalidateQueries({ queryKey: ['games'] })
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
+      setTimeout(() => setRematchResult(''), 5000)
+    },
+    onError: () => {
+      setRematchResult('Failed to re-match library')
     },
   })
 
@@ -159,13 +173,30 @@ export default function SettingsPage() {
         </p>
 
         {settings?.dat_stats && (
-          <div className="bg-gray-800 rounded-lg p-3 text-sm space-y-1">
-            <p className="text-gray-300">
-              <span className="text-white font-medium">{settings.dat_stats.loaded_dats}</span> DAT files loaded
-            </p>
-            <p className="text-gray-300">
-              <span className="text-white font-medium">{settings.dat_stats.sha1_entries?.toLocaleString()}</span> SHA1 entries indexed
-            </p>
+          <div className="bg-gray-800 rounded-lg p-3 text-sm space-y-2">
+            <div className="space-y-1">
+              <p className="text-gray-300">
+                <span className="text-white font-medium">{settings.dat_stats.loaded_dats}</span> DAT files loaded
+              </p>
+              <p className="text-gray-300">
+                <span className="text-white font-medium">{settings.dat_stats.sha1_entries?.toLocaleString()}</span> Checksum entries indexed
+              </p>
+            </div>
+            <button
+              onClick={() => rematchMutation.mutate()}
+              disabled={rematchMutation.isPending}
+              className="btn-secondary text-xs flex items-center gap-1.5 mt-2 px-3 py-1.5"
+            >
+              {rematchMutation.isPending ? (
+                <RefreshCw size={13} className="animate-spin" />
+              ) : (
+                <RefreshCw size={13} />
+              )}
+              {rematchMutation.isPending ? 'Re-matching Library…' : 'Re-Match Library with DATs'}
+            </button>
+            {rematchResult && (
+              <p className="text-xs text-green-400 mt-1">{rematchResult}</p>
+            )}
           </div>
         )}
       </section>

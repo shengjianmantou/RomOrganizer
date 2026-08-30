@@ -97,6 +97,11 @@ export async function updateSettings(settings: Record<string, unknown>) {
   return data
 }
 
+export async function rematchLibrary() {
+  const { data } = await api.post('/library/rematch')
+  return data
+}
+
 // ── Filesystem Dialog ─────────────────────────────────────────────────────────
 
 export async function pickDirectory(prompt = 'Select Directory'): Promise<string | null> {

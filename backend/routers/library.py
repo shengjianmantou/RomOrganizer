@@ -181,22 +181,39 @@ def get_library_stats(db: Session = Depends(get_db)):
     }
 
 
-@router.delete("/games/{game_id}")
-def delete_game(game_id: int, db: Session = Depends(get_db)):
-    """Remove a game and its ROM files from the library."""
-    import os
+@router.post("/rematch")
+def rematch_library(db: Session = Depends(get_db)):
+    """Re-scan loaded DAT files and update titles, No-Intro names, regions, and languages for existing ROMs."""
     from backend.config import settings
-    game = db.query(Game).filter(Game.id == game_id).first()
-    if not game:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Game not found")
-    for rf in game.rom_files:
-        try:
-            full_path = settings.library_dir / rf.library_path
-            if full_path.exists():
-                os.remove(str(full_path))
-        except Exception:
-            pass
-    db.delete(game)
+    from backend.services import dat_matcher, filename_parser, hasher
+
+    dat_count = dat_matcher.load_all_dats()
+    games = db.query(Game).all()
+    updated_count = 0
+
+    for game in games:
+        if not game.rom_files:
+            continue
+        rf = game.rom_files[0]
+        full_path = settings.library_dir / rf.library_path
+        if full_path.exists():
+            h = hasher.compute_hashes(full_path)
+            entry = dat_matcher.lookup(crc32=h.crc32, md5=h.md5, sha1=h.sha1, hashes=h)
+            if entry:
+                game.title = entry.name
+                game.sort_title = filename_parser.parse_rom_filename(entry.name).clean_title
+                game.no_intro_name = entry.name
+                game.region = entry.region
+                if entry.languages:
+                    game.languages = ",".join(entry.languages)
+                rf.dat_matched = True
+                updated_count += 1
+            elif not game.no_intro_name:
+                # Fallback clean title formatting
+                parsed = filename_parser.parse_rom_filename(rf.original_filename)
+                if parsed.clean_title:
+                    game.title = parsed.clean_title
+                    game.sort_title = parsed.clean_title
+
     db.commit()
-    return {"ok": True}
+    return {"updated": updated_count, "dats_loaded": dat_count}
