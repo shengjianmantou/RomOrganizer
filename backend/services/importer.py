@@ -165,9 +165,9 @@ async def _process_rom(
         ):
             return "skipped"
 
-        # 3. DAT lookup
+        # 3. DAT lookup (with header-aware matching)
         dat_entry = dat_matcher.lookup(
-            crc32=hashes.crc32, md5=hashes.md5, sha1=hashes.sha1
+            crc32=hashes.crc32, md5=hashes.md5, sha1=hashes.sha1, hashes=hashes
         )
 
         # 4. Filename parse (always done for fallback)
