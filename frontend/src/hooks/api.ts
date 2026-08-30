@@ -36,8 +36,20 @@ export async function fetchGames(
   return data
 }
 
-export async function fetchFilterOptions(): Promise<FilterOptions> {
-  const { data } = await api.get<FilterOptions>('/library/filters')
+export async function fetchFilterOptions(filters?: Partial<LibraryFilters>): Promise<FilterOptions> {
+  const params: Record<string, string> = {}
+  if (filters) {
+    if (filters.search) params.search = filters.search
+    if (filters.system_ids?.length) params.system_ids = filters.system_ids.join(',')
+    if (filters.languages?.length) params.languages = filters.languages.join(',')
+    if (filters.regions?.length) params.regions = filters.regions.join(',')
+    if (filters.genres?.length) params.genres = filters.genres.join(',')
+    if (filters.series) params.series = filters.series
+    if (filters.year_min != null) params.year_min = String(filters.year_min)
+    if (filters.year_max != null) params.year_max = String(filters.year_max)
+    if (filters.verified && filters.verified !== 'all') params.verified = filters.verified
+  }
+  const { data } = await api.get<FilterOptions>('/library/filters', { params })
   return data
 }
 

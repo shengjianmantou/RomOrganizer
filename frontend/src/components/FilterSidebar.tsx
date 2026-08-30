@@ -34,100 +34,179 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
         <FilterSection title="Status">
           <div className="space-y-1">
             {[
-              { id: 'all', label: 'All Games' },
-              { id: 'verified', label: '🛡️ Verified Only' },
-              { id: 'unverified', label: 'Unverified / Custom' },
-            ].map(item => (
-              <label
-                key={item.id}
-                className={clsx(
-                  'flex items-center gap-2 text-xs py-1 px-1.5 rounded cursor-pointer transition-colors',
-                  (filters.verified || 'all') === item.id
-                    ? 'bg-brand-500/20 text-white font-medium'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-800',
-                )}
-              >
-                <input
-                  type="radio"
-                  name="verified_status"
-                  value={item.id}
-                  checked={(filters.verified || 'all') === item.id}
-                  onChange={() => onChange({ verified: item.id as 'all' | 'verified' | 'unverified' })}
-                  className="accent-brand-500"
-                />
-                <span>{item.label}</span>
-              </label>
-            ))}
+              { id: 'all', label: 'All Games', count: undefined, available: true },
+              {
+                id: 'verified',
+                label: '🛡️ Verified Only',
+                count: filterOptions?.verified_count,
+                available: (filterOptions?.verified_count ?? 1) > 0,
+              },
+              {
+                id: 'unverified',
+                label: 'Unverified / Custom',
+                count: filterOptions?.unverified_count,
+                available: (filterOptions?.unverified_count ?? 1) > 0,
+              },
+            ].map(item => {
+              const isSelected = (filters.verified || 'all') === item.id
+              return (
+                <label
+                  key={item.id}
+                  className={clsx(
+                    'flex items-center justify-between text-xs py-1 px-1.5 rounded transition-colors',
+                    isSelected
+                      ? 'bg-brand-500/20 text-white font-medium'
+                      : item.available
+                      ? 'text-gray-300 hover:text-white hover:bg-gray-800 cursor-pointer'
+                      : 'text-gray-600 opacity-40 cursor-not-allowed',
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="verified_status"
+                      value={item.id}
+                      disabled={!item.available && !isSelected}
+                      checked={isSelected}
+                      onChange={() => onChange({ verified: item.id as 'all' | 'verified' | 'unverified' })}
+                      className="accent-brand-500"
+                    />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.count !== undefined && (
+                    <span className={clsx('text-[10px]', isSelected ? 'text-brand-300' : 'text-gray-500')}>
+                      {item.count.toLocaleString()}
+                    </span>
+                  )}
+                </label>
+              )
+            })}
           </div>
         </FilterSection>
 
         {/* Systems */}
         <FilterSection title="System">
-          <div className="space-y-1 max-h-48 overflow-y-auto">
-            {systems.map(sys => (
-              <label key={sys.id} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white">
-                <input
-                  type="checkbox"
-                  className="accent-brand-500"
-                  checked={filters.system_ids.includes(sys.id)}
-                  onChange={e => {
-                    const next = e.target.checked
-                      ? [...filters.system_ids, sys.id]
-                      : filters.system_ids.filter(id => id !== sys.id)
-                    onChange({ system_ids: next })
-                  }}
-                />
-                <span className="truncate">{sys.name}</span>
-              </label>
-            ))}
+          <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+            {systems
+              .slice()
+              .sort((a, b) => {
+                const countA = filterOptions?.system_counts?.[a.id] ?? 0
+                const countB = filterOptions?.system_counts?.[b.id] ?? 0
+                if ((countA > 0) !== (countB > 0)) return countA > 0 ? -1 : 1
+                return a.name.localeCompare(b.name)
+              })
+              .map(sys => {
+                const count = filterOptions?.system_counts?.[sys.id] ?? 0
+                const isSelected = filters.system_ids.includes(sys.id)
+                const isAvailable = count > 0 || isSelected
+
+                return (
+                  <label
+                    key={sys.id}
+                    className={clsx(
+                      'flex items-center justify-between text-sm py-0.5 rounded transition-colors',
+                      isSelected
+                        ? 'text-brand-300 font-medium'
+                        : isAvailable
+                        ? 'text-gray-300 hover:text-white cursor-pointer'
+                        : 'text-gray-600 opacity-35 cursor-not-allowed',
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <input
+                        type="checkbox"
+                        className="accent-brand-500"
+                        disabled={!isAvailable && !isSelected}
+                        checked={isSelected}
+                        onChange={e => {
+                          const next = e.target.checked
+                            ? [...filters.system_ids, sys.id]
+                            : filters.system_ids.filter(id => id !== sys.id)
+                          onChange({ system_ids: next })
+                        }}
+                      />
+                      <span className="truncate">{sys.name}</span>
+                    </div>
+                    {count > 0 && (
+                      <span className={clsx('text-[10px] ml-1 flex-shrink-0', isSelected ? 'text-brand-400' : 'text-gray-500')}>
+                        {count.toLocaleString()}
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
           </div>
         </FilterSection>
 
         {/* Language */}
         <FilterSection title="Language">
           <div className="flex flex-wrap gap-1.5">
-            {['En', 'Zh', 'Ja', 'Fr', 'De', 'Es', 'It', 'Pt', 'Ko', 'Ru'].map(lang => (
-              <button
-                key={lang}
-                onClick={() => {
-                  const next = filters.languages.includes(lang)
-                    ? filters.languages.filter(l => l !== lang)
-                    : [...filters.languages, lang]
-                  onChange({ languages: next })
-                }}
-                className={clsx(
-                  'badge text-xs cursor-pointer transition-colors',
-                  filters.languages.includes(lang)
-                    ? 'bg-brand-500 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700',
-                )}
-              >
-                {lang}
-              </button>
-            ))}
+            {['En', 'Zh', 'Ja', 'Fr', 'De', 'Es', 'It', 'Pt', 'Ko', 'Ru'].map(lang => {
+              const isSelected = filters.languages.includes(lang)
+              const isAvailable = !filterOptions?.available_languages || filterOptions.available_languages.includes(lang) || isSelected
+
+              return (
+                <button
+                  key={lang}
+                  disabled={!isAvailable && !isSelected}
+                  onClick={() => {
+                    const next = isSelected
+                      ? filters.languages.filter(l => l !== lang)
+                      : [...filters.languages, lang]
+                    onChange({ languages: next })
+                  }}
+                  className={clsx(
+                    'badge text-xs transition-colors',
+                    isSelected
+                      ? 'bg-brand-500 text-white shadow-sm'
+                      : isAvailable
+                      ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 cursor-pointer'
+                      : 'bg-gray-900 text-gray-600 opacity-35 cursor-not-allowed',
+                  )}
+                >
+                  {lang}
+                </button>
+              )
+            })}
           </div>
         </FilterSection>
 
         {/* Region */}
         {filterOptions?.regions && filterOptions.regions.length > 0 && (
           <FilterSection title="Region">
-            <div className="space-y-1 max-h-40 overflow-y-auto">
-              {filterOptions.regions.map(region => (
-                <label key={region} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white">
-                  <input
-                    type="checkbox"
-                    className="accent-brand-500"
-                    checked={filters.regions.includes(region)}
-                    onChange={e => {
-                      const next = e.target.checked
-                        ? [...filters.regions, region]
-                        : filters.regions.filter(r => r !== region)
-                      onChange({ regions: next })
-                    }}
-                  />
-                  {region}
-                </label>
-              ))}
+            <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+              {filterOptions.regions.map(region => {
+                const isSelected = filters.regions.includes(region)
+                const isAvailable = !filterOptions.available_regions || filterOptions.available_regions.includes(region) || isSelected
+
+                return (
+                  <label
+                    key={region}
+                    className={clsx(
+                      'flex items-center gap-2 text-sm py-0.5 rounded transition-colors',
+                      isSelected
+                        ? 'text-brand-300 font-medium'
+                        : isAvailable
+                        ? 'text-gray-300 hover:text-white cursor-pointer'
+                        : 'text-gray-600 opacity-35 cursor-not-allowed',
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-brand-500"
+                      disabled={!isAvailable && !isSelected}
+                      checked={isSelected}
+                      onChange={e => {
+                        const next = e.target.checked
+                          ? [...filters.regions, region]
+                          : filters.regions.filter(r => r !== region)
+                        onChange({ regions: next })
+                      }}
+                    />
+                    <span className="truncate">{region}</span>
+                  </label>
+                )
+              })}
             </div>
           </FilterSection>
         )}
@@ -135,23 +214,39 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
         {/* Genre */}
         {filterOptions?.genres && filterOptions.genres.length > 0 && (
           <FilterSection title="Genre">
-            <div className="space-y-1 max-h-40 overflow-y-auto">
-              {filterOptions.genres.map(genre => (
-                <label key={genre} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white">
-                  <input
-                    type="checkbox"
-                    className="accent-brand-500"
-                    checked={filters.genres.includes(genre)}
-                    onChange={e => {
-                      const next = e.target.checked
-                        ? [...filters.genres, genre]
-                        : filters.genres.filter(g => g !== genre)
-                      onChange({ genres: next })
-                    }}
-                  />
-                  <span className="truncate">{genre}</span>
-                </label>
-              ))}
+            <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+              {filterOptions.genres.map(genre => {
+                const isSelected = filters.genres.includes(genre)
+                const isAvailable = !filterOptions.available_genres || filterOptions.available_genres.includes(genre) || isSelected
+
+                return (
+                  <label
+                    key={genre}
+                    className={clsx(
+                      'flex items-center gap-2 text-sm py-0.5 rounded transition-colors',
+                      isSelected
+                        ? 'text-brand-300 font-medium'
+                        : isAvailable
+                        ? 'text-gray-300 hover:text-white cursor-pointer'
+                        : 'text-gray-600 opacity-35 cursor-not-allowed',
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-brand-500"
+                      disabled={!isAvailable && !isSelected}
+                      checked={isSelected}
+                      onChange={e => {
+                        const next = e.target.checked
+                          ? [...filters.genres, genre]
+                          : filters.genres.filter(g => g !== genre)
+                        onChange({ genres: next })
+                      }}
+                    />
+                    <span className="truncate">{genre}</span>
+                  </label>
+                )
+              })}
             </div>
           </FilterSection>
         )}

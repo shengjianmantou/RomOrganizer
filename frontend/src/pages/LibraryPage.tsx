@@ -70,8 +70,8 @@ export default function LibraryPage() {
   })
 
   const { data: filterOptions } = useQuery({
-    queryKey: ['filterOptions'],
-    queryFn: fetchFilterOptions,
+    queryKey: ['filterOptions', filters],
+    queryFn: () => fetchFilterOptions(filters),
   })
 
   const { data: stats } = useQuery({
@@ -428,6 +428,10 @@ function ImportButton({
           <textarea
             value={dirs}
             onChange={e => setDirs(e.target.value)}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             className="input w-full text-sm font-mono h-28 resize-none mb-2"
             placeholder="/path/to/roms&#10;/another/path"
           />
@@ -439,7 +443,10 @@ function ImportButton({
             >
               Start Import
             </button>
-            <button onClick={() => setOpen(false)} className="btn-secondary text-sm">
+            <button
+              onClick={() => { setDirs(''); setOpen(false) }}
+              className="btn-secondary text-sm"
+            >
               Cancel
             </button>
           </div>

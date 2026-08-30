@@ -158,18 +158,96 @@ def list_games(
 
 
 @router.get("/filters")
-def get_filter_options(db: Session = Depends(get_db)):
-    """Return distinct values for all filter fields."""
-    genres = [r[0] for r in db.query(Game.genre).distinct().filter(Game.genre.isnot(None)).all()]
-    regions = [r[0] for r in db.query(Game.region).distinct().filter(Game.region.isnot(None)).all()]
-    series_list = [r[0] for r in db.query(Game.series).distinct().filter(Game.series.isnot(None)).all()]
+def get_filter_options(
+    db: Session = Depends(get_db),
+    search: Optional[str] = None,
+    system_ids: Optional[str] = None,
+    languages: Optional[str] = None,
+    regions: Optional[str] = None,
+    genres: Optional[str] = None,
+    series: Optional[str] = None,
+    year_min: Optional[int] = None,
+    year_max: Optional[int] = None,
+    verified: Optional[str] = None,
+):
+    """Return distinct filter options along with dynamic availability counts based on active filters."""
+    def _apply(q, skip: str | None = None):
+        if search and skip != "search":
+            q = q.filter(Game.title.ilike(f"%{search}%"))
+        if system_ids and skip != "system_ids":
+            ids = [int(x) for x in system_ids.split(",") if x.strip().isdigit()]
+            if ids:
+                q = q.filter(Game.system_id.in_(ids))
+        if verified and skip != "verified":
+            if verified == "verified":
+                q = q.filter(Game.no_intro_name.isnot(None))
+            elif verified == "unverified":
+                q = q.filter(Game.no_intro_name.is_(None))
+        if languages and skip != "languages":
+            lang_list = [l.strip() for l in languages.split(",") if l.strip()]
+            q = q.filter(or_(*[Game.languages.ilike(f"%{l}%") for l in lang_list]))
+        if regions and skip != "regions":
+            r_list = [r.strip() for r in regions.split(",") if r.strip()]
+            q = q.filter(Game.region.in_(r_list))
+        if genres and skip != "genres":
+            g_list = [g.strip() for g in genres.split(",") if g.strip()]
+            q = q.filter(or_(*[Game.genre.ilike(f"%{g}%") for g in g_list]))
+        if series and skip != "series":
+            q = q.filter(Game.series.ilike(f"%{series}%"))
+        if year_min is not None and skip != "years":
+            q = q.filter(Game.release_year >= year_min)
+        if year_max is not None and skip != "years":
+            q = q.filter(Game.release_year <= year_max)
+        return q
+
+    # 1. System counts (evaluated against all filters except system_ids)
+    q_sys = _apply(db.query(Game), skip="system_ids")
+    sys_counts = {
+        r[0]: r[1]
+        for r in q_sys.with_entities(Game.system_id, func.count(Game.id)).group_by(Game.system_id).all()
+    }
+
+    # 2. Languages available (evaluated against all filters except languages)
+    q_lang = _apply(db.query(Game), skip="languages")
+    raw_langs = [r[0] for r in q_lang.with_entities(Game.languages).distinct().filter(Game.languages.isnot(None)).all()]
+    available_languages = sorted({l.strip() for r in raw_langs for l in r.split(",") if l.strip()})
+
+    # 3. Regions available (evaluated against all filters except regions)
+    q_reg = _apply(db.query(Game), skip="regions")
+    available_regions = sorted(r[0] for r in q_reg.with_entities(Game.region).distinct().filter(Game.region.isnot(None)).all() if r[0])
+
+    # 4. Genres available (evaluated against all filters except genres)
+    q_gen = _apply(db.query(Game), skip="genres")
+    available_genres = sorted(r[0] for r in q_gen.with_entities(Game.genre).distinct().filter(Game.genre.isnot(None)).all() if r[0])
+
+    # 5. Series available (evaluated against all filters except series)
+    q_ser = _apply(db.query(Game), skip="series")
+    available_series = sorted(r[0] for r in q_ser.with_entities(Game.series).distinct().filter(Game.series.isnot(None)).all() if r[0])
+
+    # 6. Verification counts (evaluated against all filters except verified)
+    q_ver = _apply(db.query(Game), skip="verified")
+    verified_count = q_ver.filter(Game.no_intro_name.isnot(None)).count()
+    unverified_count = q_ver.filter(Game.no_intro_name.is_(None)).count()
+
+    # 7. Global distinct options for static dropdowns
+    all_genres = [r[0] for r in db.query(Game.genre).distinct().filter(Game.genre.isnot(None)).all() if r[0]]
+    all_regions = [r[0] for r in db.query(Game.region).distinct().filter(Game.region.isnot(None)).all() if r[0]]
+    all_series = [r[0] for r in db.query(Game.series).distinct().filter(Game.series.isnot(None)).all() if r[0]]
     years = [r[0] for r in db.query(Game.release_year).distinct().filter(Game.release_year.isnot(None)).order_by(Game.release_year).all()]
 
     return {
-        "genres": sorted(g for g in genres if g),
-        "regions": sorted(r for r in regions if r),
-        "series": sorted(s for s in series_list if s),
+        "genres": sorted(all_genres),
+        "regions": sorted(all_regions),
+        "series": sorted(all_series),
         "years": years,
+        "system_counts": sys_counts,
+        "available_system_ids": list(sys_counts.keys()),
+        "available_languages": available_languages,
+        "available_regions": available_regions,
+        "available_genres": available_genres,
+        "available_series": available_series,
+        "verified_count": verified_count,
+        "unverified_count": unverified_count,
     }
 
 

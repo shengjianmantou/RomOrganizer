@@ -56,6 +56,14 @@ export interface FilterOptions {
   regions: string[]
   series: string[]
   years: number[]
+  system_counts?: Record<number, number>
+  available_system_ids?: number[]
+  available_languages?: string[]
+  available_regions?: string[]
+  available_genres?: string[]
+  available_series?: string[]
+  verified_count?: number
+  unverified_count?: number
 }
 
 export interface LibraryFilters {
