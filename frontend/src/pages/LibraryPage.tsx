@@ -359,7 +359,7 @@ export default function LibraryPage() {
           {isLoading ? (
             <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>
           ) : games.length === 0 ? (
-            <EmptyState onImportRequested={handleStartImport} setDirs={setImportDirs} />
+            <EmptyState />
           ) : viewMode === 'grid' ? (
             <GameGrid
               games={games}
@@ -435,6 +435,7 @@ export default function LibraryPage() {
             setImportJobId(null)
             queryClient.invalidateQueries({ queryKey: ['games'] })
             queryClient.invalidateQueries({ queryKey: ['libraryStats'] })
+            queryClient.invalidateQueries({ queryKey: ['filterOptions'] })
           }}
         />
       )}
@@ -449,48 +450,10 @@ export default function LibraryPage() {
   )
 }
 
-function EmptyState({
-  onImportRequested,
-  setDirs,
-}: {
-  onImportRequested?: () => void
-  setDirs?: (v: string) => void
-}) {
-  const [picking, setPicking] = useState(false)
-
-  const handlePick = async () => {
-    if (!setDirs) return
-    setPicking(true)
-    try {
-      const selected = await pickDirectory('Select ROM Directory to Import')
-      if (selected) {
-        setDirs(selected)
-        if (onImportRequested) onImportRequested()
-      }
-    } finally {
-      setPicking(false)
-    }
-  }
-
+function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center h-80 text-center max-w-md mx-auto p-6 rounded-2xl border border-gray-800/80 bg-gray-900/30">
-      <div className="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400 mb-3">
-        <FolderOpen size={24} />
-      </div>
-      <p className="text-gray-200 text-lg font-semibold">No games in view</p>
-      <p className="text-gray-400 text-sm mt-1 mb-5">
-        Select a ROM folder on your computer to import, inspect, and organize your collection.
-      </p>
-      {setDirs && (
-        <button
-          onClick={handlePick}
-          disabled={picking}
-          className="btn-primary flex items-center gap-2 text-sm shadow-lg shadow-brand-500/10"
-        >
-          {picking ? <span className="animate-spin">⟳</span> : <FolderOpen size={16} />}
-          <span>Select ROM Folder…</span>
-        </button>
-      )}
+    <div className="flex flex-col items-center justify-center h-64 text-center text-gray-500 text-sm">
+      <p>No games in library or matching active filters.</p>
     </div>
   )
 }

@@ -349,10 +349,19 @@ def _resolve_system(
     systems_by_ext: dict[str, list[System]],
     esde_folders: set[str],
 ) -> System | None:
-    # 1. From DAT entry system name
+    import re
+    # 1. From DAT entry system name (longest match first to prevent prefix clashes like Neo Geo vs Neo Geo Pocket Color)
     if dat_entry and dat_entry.system_name:
-        for s in systems_by_folder.values():
-            if s.name.lower() in dat_entry.system_name.lower() or s.esde_folder in dat_entry.system_name.lower():
+        dat_norm = re.sub(r"[^a-z0-9]", "", dat_entry.system_name.lower())
+        sorted_systems = sorted(
+            systems_by_folder.values(),
+            key=lambda s: len(re.sub(r"[^a-z0-9]", "", s.name)),
+            reverse=True,
+        )
+        for s in sorted_systems:
+            s_name_norm = re.sub(r"[^a-z0-9]", "", s.name.lower())
+            s_folder_norm = re.sub(r"[^a-z0-9]", "", s.esde_folder.lower())
+            if s_name_norm in dat_norm or s_folder_norm in dat_norm:
                 return s
 
     # 2. From parent directory / path parts matching an ES-DE folder

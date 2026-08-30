@@ -90,15 +90,22 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
             {systems
               .slice()
               .sort((a, b) => {
-                const countA = filterOptions?.system_counts?.[a.id] ?? 0
-                const countB = filterOptions?.system_counts?.[b.id] ?? 0
+                const getCount = (id: number) => {
+                  if (!filterOptions?.system_counts) return 0
+                  return filterOptions.system_counts[id] ?? (filterOptions.system_counts as Record<string, number>)[String(id)] ?? 0
+                }
+                const countA = getCount(a.id)
+                const countB = getCount(b.id)
                 if ((countA > 0) !== (countB > 0)) return countA > 0 ? -1 : 1
                 return a.name.localeCompare(b.name)
               })
               .map(sys => {
-                const count = filterOptions?.system_counts?.[sys.id] ?? 0
+                const count = filterOptions?.system_counts
+                  ? (filterOptions.system_counts[sys.id] ?? (filterOptions.system_counts as Record<string, number>)[String(sys.id)] ?? 0)
+                  : 0
+                const hasSystemCounts = filterOptions?.system_counts !== undefined && Object.keys(filterOptions.system_counts).length > 0
                 const isSelected = filters.system_ids.includes(sys.id)
-                const isAvailable = count > 0 || isSelected
+                const isAvailable = !hasSystemCounts || count > 0 || isSelected
 
                 return (
                   <label
