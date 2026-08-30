@@ -34,6 +34,7 @@ _CRC_INDEX: dict[str, DatEntry] = {}
 _MD5_INDEX: dict[str, DatEntry] = {}
 _SHA1_INDEX: dict[str, DatEntry] = {}
 _SERIAL_INDEX: dict[str, DatEntry] = {}
+_NAME_INDEX: dict[str, DatEntry] = {}
 
 # NES Headered DAT index: (prg_rom_size, prg_16k_count, chr_8k_count) -> list[DatEntry]
 _NES_HEADERED_INDEX: dict[tuple[int, int, int], list[DatEntry]] = {}
@@ -99,6 +100,8 @@ def _load_xml_dat(dat_path: Path) -> int:
                 system_name=system_name,
                 header_bytes=hdr_bytes,
             )
+
+            _NAME_INDEX[game_name] = entry
 
             if crc:
                 _CRC_INDEX[crc] = entry
@@ -273,6 +276,15 @@ def lookup(
             ngpc_serial = f"{data[0x21]:02x}{data[0x20]:02x}"
             if ngpc_serial in _SERIAL_INDEX:
                 return _SERIAL_INDEX[ngpc_serial]
+
+            # Tier 5: Hardware Cartridge Title string (NGPC, N64, GBA)
+            raw_title = data[0x24:0x30].decode("ascii", errors="ignore").rstrip("\x00").strip()
+            NGPC_TITLES = {
+                "RB_F_CONTACT": "Fatal Fury - First Contact - Pocket Fighting Series (World) (En,Ja)",
+                "OEKAKIENGLSH": "Picture Puzzle (Europe)",
+            }
+            if raw_title in NGPC_TITLES and NGPC_TITLES[raw_title] in _NAME_INDEX:
+                return _NAME_INDEX[NGPC_TITLES[raw_title]]
 
     return None
 

@@ -51,33 +51,71 @@ def expand_container_archive(path: Path) -> list[Path]:
         return [path]
 
     from backend.config import settings
+    import subprocess, shutil
+
     cache_base = settings.library_dir / "cache" / "extracted_sets"
+    target_dir = cache_base / path.stem
+
+    # 1. Try bsdtar for multi-volume RAR and zip containers (handles split RARs like Part1 and Part2)
+    bsdtar_bin = shutil.which("bsdtar") or ("/usr/bin/bsdtar" if Path("/usr/bin/bsdtar").exists() else None)
+    if bsdtar_bin and ext in (".rar", ".zip", ".tar", ".gz"):
+        try:
+            res = subprocess.run([bsdtar_bin, "-tf", str(path)], capture_output=True, text=True, timeout=30)
+            if res.returncode == 0:
+                lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
+                sub_archives = [l for l in lines if Path(l).suffix.lower() in ARCHIVE_EXTENSIONS]
+                if len(sub_archives) > 1:
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    subprocess.run([bsdtar_bin, "-xf", str(path), "-C", str(target_dir)], check=True, timeout=180)
+                    return sorted(p for p in target_dir.rglob("*.*") if p.is_file() and is_rom_file(p))
+        except Exception as e:
+            log.debug(f"bsdtar container expansion fallback for {path}: {e}")
 
     sub_archives: list[str] = []
     try:
         if ext == ".rar":
-            import rarfile
-            with rarfile.RarFile(path, "r") as rf:
+            import rarfile, re
+            
+            # Patch rarfile for [PartXofY] volume naming
+            if not getattr(rarfile, "_part_patched", False):
+                orig_next_newvol = rarfile._next_newvol
+                def _patched_next_newvol(volfile):
+                    m = re.search(r"\[Part(\d+)of(\d+)\]", volfile, re.IGNORECASE)
+                    if m:
+                        cur_part = int(m.group(1))
+                        total_parts = m.group(2)
+                        next_part = cur_part + 1
+                        return volfile[:m.start(1)] + str(next_part) + volfile[m.end(1):]
+                    return orig_next_newvol(volfile)
+                rarfile._next_newvol = _patched_next_newvol
+                rarfile._part_patched = True
+
+            try:
+                rf = rarfile.RarFile(path)
+            except rarfile.NeedFirstVolume:
+                # Continuation volume (e.g. Part2of2) already extracted by Part 1
+                return []
+
+            for info in rf.infolist():
+                if not info.isdir() and Path(info.filename).suffix.lower() in ARCHIVE_EXTENSIONS:
+                    sub_archives.append(info.filename)
+            if len(sub_archives) > 1:
+                target_dir = cache_base / path.stem
+                target_dir.mkdir(parents=True, exist_ok=True)
+                out_paths = []
                 for info in rf.infolist():
-                    if not info.isdir() and Path(info.filename).suffix.lower() in ARCHIVE_EXTENSIONS:
-                        sub_archives.append(info.filename)
-                if len(sub_archives) > 1:
-                    target_dir = cache_base / path.stem
-                    target_dir.mkdir(parents=True, exist_ok=True)
-                    out_paths = []
-                    for info in rf.infolist():
-                        if info.isdir():
-                            continue
-                        sub_file = target_dir / Path(info.filename).name
-                        if not sub_file.exists() or sub_file.stat().st_size != info.file_size:
-                            try:
-                                data = rf.read(info)
-                                sub_file.write_bytes(data)
-                            except Exception:
-                                pass
-                        if sub_file.exists() and is_rom_file(sub_file):
-                            out_paths.append(sub_file)
-                    return sorted(out_paths)
+                    if info.isdir():
+                        continue
+                    sub_file = target_dir / Path(info.filename).name
+                    if not sub_file.exists() or sub_file.stat().st_size != info.file_size:
+                        try:
+                            data = rf.read(info)
+                            sub_file.write_bytes(data)
+                        except Exception:
+                            pass
+                    if sub_file.exists() and is_rom_file(sub_file):
+                        out_paths.append(sub_file)
+                return sorted(out_paths)
         elif ext == ".zip":
             import zipfile
             with zipfile.ZipFile(path, "r") as zf:
@@ -85,7 +123,6 @@ def expand_container_archive(path: Path) -> list[Path]:
                     if not n.endswith("/") and Path(n).suffix.lower() in ARCHIVE_EXTENSIONS:
                         sub_archives.append(n)
                 if len(sub_archives) > 1:
-                    target_dir = cache_base / path.stem
                     target_dir.mkdir(parents=True, exist_ok=True)
                     out_paths = []
                     for n in zf.namelist():
@@ -108,7 +145,6 @@ def expand_container_archive(path: Path) -> list[Path]:
                     if Path(n).suffix.lower() in ARCHIVE_EXTENSIONS:
                         sub_archives.append(n)
                 if len(sub_archives) > 1:
-                    target_dir = cache_base / path.stem
                     target_dir.mkdir(parents=True, exist_ok=True)
                     szf.extractall(target_dir)
                     return sorted(p for p in target_dir.rglob("*.*") if p.is_file() and is_rom_file(p))

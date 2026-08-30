@@ -53,12 +53,10 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
                 <label
                   key={item.id}
                   className={clsx(
-                    'flex items-center justify-between text-xs py-1 px-1.5 rounded transition-colors',
+                    'flex items-center justify-between text-xs py-1 px-1.5 rounded transition-colors cursor-pointer',
                     isSelected
                       ? 'bg-brand-500/20 text-white font-medium'
-                      : item.available
-                      ? 'text-gray-300 hover:text-white hover:bg-gray-800 cursor-pointer'
-                      : 'text-gray-600 opacity-40 cursor-not-allowed',
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800',
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -66,14 +64,13 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
                       type="radio"
                       name="verified_status"
                       value={item.id}
-                      disabled={!item.available && !isSelected}
                       checked={isSelected}
                       onChange={() => onChange({ verified: item.id as 'all' | 'verified' | 'unverified' })}
-                      className="accent-brand-500"
+                      className="accent-brand-500 cursor-pointer"
                     />
                     <span>{item.label}</span>
                   </div>
-                  {item.count !== undefined && (
+                  {item.count !== undefined && item.count > 0 && (
                     <span className={clsx('text-[10px]', isSelected ? 'text-brand-300' : 'text-gray-500')}>
                       {item.count.toLocaleString()}
                     </span>
@@ -104,25 +101,19 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
                   ? (filterOptions.system_counts[sys.id] ?? (filterOptions.system_counts as Record<string, number>)[String(sys.id)] ?? 0)
                   : 0
                 const isSelected = filters.system_ids.includes(sys.id)
-                const isAvailable = count > 0 || isSelected
 
                 return (
                   <label
                     key={sys.id}
                     className={clsx(
-                      'flex items-center justify-between text-sm py-0.5 rounded transition-colors',
-                      isSelected
-                        ? 'text-brand-300 font-medium'
-                        : isAvailable
-                        ? 'text-gray-300 hover:text-white cursor-pointer'
-                        : 'text-gray-600 opacity-35 cursor-not-allowed',
+                      'flex items-center justify-between text-sm py-0.5 rounded transition-colors cursor-pointer',
+                      isSelected ? 'text-brand-300 font-medium' : 'text-gray-300 hover:text-white',
                     )}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <input
                         type="checkbox"
-                        className="accent-brand-500"
-                        disabled={!isAvailable && !isSelected}
+                        className="accent-brand-500 cursor-pointer"
                         checked={isSelected}
                         onChange={e => {
                           const next = e.target.checked
@@ -149,14 +140,10 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
           <div className="flex flex-wrap gap-1.5">
             {['En', 'Zh', 'Ja', 'Fr', 'De', 'Es', 'It', 'Pt', 'Ko', 'Ru'].map(lang => {
               const isSelected = filters.languages.includes(lang)
-              const isAvailable = filterOptions?.available_languages && filterOptions.available_languages.length > 0
-                ? (filterOptions.available_languages.includes(lang) || isSelected)
-                : isSelected
 
               return (
                 <button
                   key={lang}
-                  disabled={!isAvailable && !isSelected}
                   onClick={() => {
                     const next = isSelected
                       ? filters.languages.filter(l => l !== lang)
@@ -164,12 +151,10 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
                     onChange({ languages: next })
                   }}
                   className={clsx(
-                    'badge text-xs transition-colors',
+                    'badge text-xs transition-colors cursor-pointer',
                     isSelected
                       ? 'bg-brand-500 text-white shadow-sm'
-                      : isAvailable
-                      ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 cursor-pointer'
-                      : 'bg-gray-900 text-gray-600 opacity-35 cursor-not-allowed',
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700',
                   )}
                 >
                   {lang}
@@ -185,26 +170,18 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
             <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
               {filterOptions.regions.map(region => {
                 const isSelected = filters.regions.includes(region)
-                const isAvailable = filterOptions?.available_regions && filterOptions.available_regions.length > 0
-                  ? (filterOptions.available_regions.includes(region) || isSelected)
-                  : isSelected
 
                 return (
                   <label
                     key={region}
                     className={clsx(
-                      'flex items-center gap-2 text-sm py-0.5 rounded transition-colors',
-                      isSelected
-                        ? 'text-brand-300 font-medium'
-                        : isAvailable
-                        ? 'text-gray-300 hover:text-white cursor-pointer'
-                        : 'text-gray-600 opacity-35 cursor-not-allowed',
+                      'flex items-center gap-2 text-sm py-0.5 rounded transition-colors cursor-pointer',
+                      isSelected ? 'text-brand-300 font-medium' : 'text-gray-300 hover:text-white',
                     )}
                   >
                     <input
                       type="checkbox"
-                      className="accent-brand-500"
-                      disabled={!isAvailable && !isSelected}
+                      className="accent-brand-500 cursor-pointer"
                       checked={isSelected}
                       onChange={e => {
                         const next = e.target.checked
@@ -227,26 +204,18 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
             <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
               {filterOptions.genres.map(genre => {
                 const isSelected = filters.genres.includes(genre)
-                const isAvailable = filterOptions?.available_genres && filterOptions.available_genres.length > 0
-                  ? (filterOptions.available_genres.includes(genre) || isSelected)
-                  : isSelected
 
                 return (
                   <label
                     key={genre}
                     className={clsx(
-                      'flex items-center gap-2 text-sm py-0.5 rounded transition-colors',
-                      isSelected
-                        ? 'text-brand-300 font-medium'
-                        : isAvailable
-                        ? 'text-gray-300 hover:text-white cursor-pointer'
-                        : 'text-gray-600 opacity-35 cursor-not-allowed',
+                      'flex items-center gap-2 text-sm py-0.5 rounded transition-colors cursor-pointer',
+                      isSelected ? 'text-brand-300 font-medium' : 'text-gray-300 hover:text-white',
                     )}
                   >
                     <input
                       type="checkbox"
-                      className="accent-brand-500"
-                      disabled={!isAvailable && !isSelected}
+                      className="accent-brand-500 cursor-pointer"
                       checked={isSelected}
                       onChange={e => {
                         const next = e.target.checked
