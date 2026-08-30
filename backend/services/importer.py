@@ -169,7 +169,6 @@ async def _process_rom(
             crc32=hashes.crc32, md5=hashes.md5, sha1=hashes.sha1
         ):
             if dat_entry:
-                from backend.db.models import RomFile
                 with get_session() as session:
                     rf = (
                         session.query(RomFile)
