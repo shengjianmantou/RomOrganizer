@@ -10,6 +10,8 @@ interface Props {
   sortDir: 'asc' | 'desc'
   onSortChange: (col: string, dir: 'asc' | 'desc') => void
   onInspect?: (game: Game) => void
+  onSelectAllMatching?: () => void
+  totalMatching?: number
 }
 
 const COLUMNS: { key: string; label: string; width?: string }[] = [
@@ -23,7 +25,7 @@ const COLUMNS: { key: string; label: string; width?: string }[] = [
 ]
 
 export default function GameTable({
-  games, selectedIds, onSelectionChange, sortBy, sortDir, onSortChange, onInspect,
+  games, selectedIds, onSelectionChange, sortBy, sortDir, onSortChange, onInspect, onSelectAllMatching, totalMatching,
 }: Props) {
   const allSelected = games.length > 0 && games.every(g => selectedIds.has(g.id))
 
@@ -35,10 +37,10 @@ export default function GameTable({
   }
 
   const toggleAll = () => {
-    if (allSelected) {
-      const next = new Set(selectedIds)
-      games.forEach(g => next.delete(g.id))
-      onSelectionChange(next)
+    if (selectedIds.size > 0) {
+      onSelectionChange(new Set())
+    } else if (onSelectAllMatching) {
+      onSelectAllMatching()
     } else {
       const next = new Set(selectedIds)
       games.forEach(g => next.add(g.id))

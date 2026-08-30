@@ -157,7 +157,77 @@ def list_games(
     return GamesResponse(total=total, page=page, page_size=page_size, items=result_items)
 
 
-@router.get("/filters")
+@router.get("/game-ids")
+def get_all_game_ids(
+    db: Session = Depends(get_db),
+    search: Optional[str] = None,
+    system_ids: Optional[str] = None,
+    languages: Optional[str] = None,
+    regions: Optional[str] = None,
+    genres: Optional[str] = None,
+    series: Optional[str] = None,
+    year_min: Optional[int] = None,
+    year_max: Optional[int] = None,
+    verified: Optional[str] = Query(None, enum=["all", "verified", "unverified"]),
+) -> list[int]:
+    """Return all game IDs matching the given filters across all pages."""
+    q = db.query(Game.id).join(System)
+
+    if search:
+        q = q.filter(Game.title.ilike(f"%{search}%"))
+    if system_ids:
+        ids = [int(x) for x in system_ids.split(",") if x.strip().isdigit()]
+        if ids:
+            q = q.filter(Game.system_id.in_(ids))
+    if verified == "verified":
+        q = q.filter(Game.no_intro_name.isnot(None))
+    elif verified == "unverified":
+        q = q.filter(Game.no_intro_name.is_(None))
+    if languages:
+        lang_list = [l.strip() for l in languages.split(",") if l.strip()]
+        conditions = [Game.languages.ilike(f"%{lang}%") for lang in lang_list]
+        q = q.filter(or_(*conditions))
+    if regions:
+        region_list = [r.strip() for r in regions.split(",") if r.strip()]
+        q = q.filter(Game.region.in_(region_list))
+    if genres:
+        genre_list = [g.strip() for g in genres.split(",") if g.strip()]
+        conditions = [Game.genre.ilike(f"%{g}%") for g in genre_list]
+        q = q.filter(or_(*conditions))
+    if series:
+        q = q.filter(Game.series.ilike(f"%{series}%"))
+    if year_min is not None:
+        q = q.filter(Game.release_year >= year_min)
+    if year_max is not None:
+        q = q.filter(Game.release_year <= year_max)
+
+    return [r[0] for r in q.all()]
+
+
+@router.post("/clear")
+def clear_library(db: Session = Depends(get_db)):
+    """Clear all imported games and ROM files from the database and library storage."""
+    import shutil
+    from backend.config import settings
+
+    db.query(Game).delete()
+    db.commit()
+
+    if settings.files_dir.exists():
+        for item in settings.files_dir.iterdir():
+            if item.is_dir():
+                shutil.rmtree(item, ignore_errors=True)
+            else:
+                item.unlink(missing_ok=True)
+
+    if settings.media_dir.exists():
+        for item in settings.media_dir.iterdir():
+            if item.is_dir():
+                shutil.rmtree(item, ignore_errors=True)
+            else:
+                item.unlink(missing_ok=True)
+
+    return {"status": "cleared", "total_games": 0}
 def get_filter_options(
     db: Session = Depends(get_db),
     search: Optional[str] = None,

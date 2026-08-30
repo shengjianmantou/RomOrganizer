@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  LayoutGrid, List, Download, Upload, Search, X, SlidersHorizontal, RefreshCw, FolderOpen, ShieldCheck, CheckCircle2,
+  LayoutGrid, List, Download, Upload, Search, X, SlidersHorizontal, RefreshCw, FolderOpen, ShieldCheck, CheckCircle2, Trash2,
 } from 'lucide-react'
 import clsx from 'clsx'
 
-import { fetchGames, fetchSystems, fetchFilterOptions, fetchLibraryStats, startImport, pickDirectory, rematchLibrary } from '../hooks/api'
+import { fetchGames, fetchSystems, fetchFilterOptions, fetchLibraryStats, startImport, pickDirectory, rematchLibrary, fetchAllGameIds, clearLibrary } from '../hooks/api'
 import type { Game, LibraryFilters, System } from '../types'
 import GameGrid from '../components/GameGrid'
 import GameTable from '../components/GameTable'
@@ -80,6 +80,20 @@ export default function LibraryPage() {
     refetchInterval: 30_000,
   })
 
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [selectingAll, setSelectingAll] = useState(false)
+
+  const clearMutation = useMutation({
+    mutationFn: clearLibrary,
+    onSuccess: () => {
+      setSelectedIds(new Set())
+      queryClient.invalidateQueries({ queryKey: ['games'] })
+      queryClient.invalidateQueries({ queryKey: ['libraryStats'] })
+      queryClient.invalidateQueries({ queryKey: ['filterOptions'] })
+      setShowClearConfirm(false)
+    },
+  })
+
   // Debounced search
   const handleSearchChange = (val: string) => {
     setSearchInput(val)
@@ -95,12 +109,22 @@ export default function LibraryPage() {
     setPage(1)
   }
 
-  const handleSelectAll = () => {
+  const handleSelectAll = async () => {
     if (!gamesData) return
-    if (selectedIds.size === gamesData.items.length) {
+    // If all matching games are already selected, deselect all
+    if (selectedIds.size === total && total > 0) {
       setSelectedIds(new Set())
-    } else {
+      return
+    }
+    // Select all matching games across ALL pages
+    setSelectingAll(true)
+    try {
+      const allIds = await fetchAllGameIds(filters)
+      setSelectedIds(new Set(allIds))
+    } catch {
       setSelectedIds(new Set(gamesData.items.map(g => g.id)))
+    } finally {
+      setSelectingAll(false)
     }
   }
 
@@ -237,6 +261,17 @@ export default function LibraryPage() {
             {/* Import */}
             <ImportButton onImport={handleStartImport} dirs={importDirs} setDirs={setImportDirs} />
 
+            {/* Clear Library */}
+            <button
+              onClick={() => setShowClearConfirm(true)}
+              disabled={clearMutation.isPending || total === 0}
+              title="Clear all games from library"
+              className="btn-secondary flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-950/30 border-red-900/30"
+            >
+              <Trash2 size={14} className={clearMutation.isPending ? 'animate-spin' : ''} />
+              <span>Clear</span>
+            </button>
+
             {/* Export */}
             <button
               onClick={() => setShowExport(true)}
@@ -244,10 +279,42 @@ export default function LibraryPage() {
               className="btn-primary flex items-center gap-1.5 text-sm"
             >
               <Download size={15} />
-              Export {selectedIds.size > 0 && `(${selectedIds.size})`}
+              Export {selectedIds.size > 0 && `(${selectedIds.size.toLocaleString()})`}
             </button>
           </div>
         </div>
+
+        {/* Clear Library Confirmation Dialog */}
+        {showClearConfirm && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="card p-6 max-w-md w-full border border-red-900/50 shadow-2xl">
+              <div className="flex items-center gap-3 text-red-400 mb-3">
+                <Trash2 size={24} />
+                <h3 className="text-lg font-semibold text-white">Clear Entire Library?</h3>
+              </div>
+              <p className="text-sm text-gray-300 mb-6 leading-relaxed">
+                This will remove all {total.toLocaleString()} indexed games and clear the library storage so you can start a completely fresh session. Your original ROM source folders are untouched.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  disabled={clearMutation.isPending}
+                  className="btn-secondary text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => clearMutation.mutate()}
+                  disabled={clearMutation.isPending}
+                  className="btn-danger text-sm flex items-center gap-2"
+                >
+                  {clearMutation.isPending ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  <span>{clearMutation.isPending ? 'Clearing…' : 'Yes, Clear Everything'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Re-match Status Alert Banner */}
         {rematchStatus && (
@@ -262,13 +329,27 @@ export default function LibraryPage() {
 
         {/* Selection bar */}
         {selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 px-4 py-2 bg-brand-500/10 border-b border-brand-500/20 text-sm">
-            <span className="text-brand-300 font-medium">{selectedIds.size} selected</span>
-            <button onClick={handleSelectAll} className="text-brand-400 hover:text-brand-300 underline">
-              {selectedIds.size === games.length ? 'Deselect all' : 'Select all on page'}
-            </button>
-            <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-gray-400 hover:text-white">
-              <X size={15} />
+          <div className="flex items-center gap-3 px-4 py-2 bg-brand-500/15 border-b border-brand-500/30 text-sm">
+            <span className="text-brand-300 font-medium">
+              {selectedIds.size === total && total > 0
+                ? `✓ All ${total.toLocaleString()} games across all pages selected`
+                : `${selectedIds.size.toLocaleString()} selected`}
+            </span>
+            {selectedIds.size < total && (
+              <button
+                onClick={handleSelectAll}
+                disabled={selectingAll}
+                className="text-brand-400 hover:text-brand-200 underline font-medium text-xs ml-1"
+              >
+                {selectingAll ? 'Selecting all…' : `Select all ${total.toLocaleString()} games across all pages`}
+              </button>
+            )}
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="ml-auto text-xs text-gray-400 hover:text-white flex items-center gap-1 bg-gray-800/60 px-2 py-1 rounded"
+            >
+              <span>Clear selection</span>
+              <X size={13} />
             </button>
           </div>
         )}
@@ -278,7 +359,7 @@ export default function LibraryPage() {
           {isLoading ? (
             <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>
           ) : games.length === 0 ? (
-            <EmptyState />
+            <EmptyState onImportRequested={handleStartImport} setDirs={setImportDirs} />
           ) : viewMode === 'grid' ? (
             <GameGrid
               games={games}
@@ -295,6 +376,8 @@ export default function LibraryPage() {
               sortBy={filters.sort_by}
               sortDir={filters.sort_dir}
               onInspect={setInspectedGame}
+              onSelectAllMatching={handleSelectAll}
+              totalMatching={total}
             />
           )}
         </div>
@@ -366,13 +449,48 @@ export default function LibraryPage() {
   )
 }
 
-function EmptyState() {
+function EmptyState({
+  onImportRequested,
+  setDirs,
+}: {
+  onImportRequested?: () => void
+  setDirs?: (v: string) => void
+}) {
+  const [picking, setPicking] = useState(false)
+
+  const handlePick = async () => {
+    if (!setDirs) return
+    setPicking(true)
+    try {
+      const selected = await pickDirectory('Select ROM Directory to Import')
+      if (selected) {
+        setDirs(selected)
+        if (onImportRequested) onImportRequested()
+      }
+    } finally {
+      setPicking(false)
+    }
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center h-64 text-center">
-      <p className="text-gray-400 text-lg">No games found</p>
-      <p className="text-gray-500 text-sm mt-1">
-        Import a ROM directory or adjust your filters to see games here.
+    <div className="flex flex-col items-center justify-center h-80 text-center max-w-md mx-auto p-6 rounded-2xl border border-gray-800/80 bg-gray-900/30">
+      <div className="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400 mb-3">
+        <FolderOpen size={24} />
+      </div>
+      <p className="text-gray-200 text-lg font-semibold">No games in view</p>
+      <p className="text-gray-400 text-sm mt-1 mb-5">
+        Select a ROM folder on your computer to import, inspect, and organize your collection.
       </p>
+      {setDirs && (
+        <button
+          onClick={handlePick}
+          disabled={picking}
+          className="btn-primary flex items-center gap-2 text-sm shadow-lg shadow-brand-500/10"
+        >
+          {picking ? <span className="animate-spin">⟳</span> : <FolderOpen size={16} />}
+          <span>Select ROM Folder…</span>
+        </button>
+      )}
     </div>
   )
 }
