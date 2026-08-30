@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  LayoutGrid, List, Download, Upload, Search, X, SlidersHorizontal, RefreshCw, FolderOpen, ShieldCheck,
+  LayoutGrid, List, Download, Upload, Search, X, SlidersHorizontal, RefreshCw, FolderOpen, ShieldCheck, CheckCircle2,
 } from 'lucide-react'
 import clsx from 'clsx'
 
-import { fetchGames, fetchSystems, fetchFilterOptions, fetchLibraryStats, startImport, pickDirectory } from '../hooks/api'
+import { fetchGames, fetchSystems, fetchFilterOptions, fetchLibraryStats, startImport, pickDirectory, rematchLibrary } from '../hooks/api'
 import type { Game, LibraryFilters, System } from '../types'
 import GameGrid from '../components/GameGrid'
 import GameTable from '../components/GameTable'
@@ -38,10 +38,26 @@ export default function LibraryPage() {
   const [importJobId, setImportJobId] = useState<number | null>(null)
   const [exportJobId, setExportJobId] = useState<number | null>(null)
   const [inspectedGame, setInspectedGame] = useState<Game | null>(null)
+  const [rematchStatus, setRematchStatus] = useState<string | null>(null)
   const [searchInput, setSearchInput] = useState('')
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const queryClient = useQueryClient()
+
+  const rematchMutation = useMutation({
+    mutationFn: rematchLibrary,
+    onSuccess: (data) => {
+      setRematchStatus(`✓ Updated ${data.updated} games using ${data.dats_loaded} loaded DATs!`)
+      queryClient.invalidateQueries({ queryKey: ['games'] })
+      queryClient.invalidateQueries({ queryKey: ['libraryStats'] })
+      queryClient.invalidateQueries({ queryKey: ['filterOptions'] })
+      setTimeout(() => setRematchStatus(null), 5000)
+    },
+    onError: () => {
+      setRematchStatus('Failed to re-match library')
+      setTimeout(() => setRematchStatus(null), 4000)
+    },
+  })
 
   const { data: gamesData, isLoading, isFetching } = useQuery({
     queryKey: ['games', filters, page],
@@ -207,6 +223,17 @@ export default function LibraryPage() {
               </button>
             </div>
 
+            {/* Re-Match DATs */}
+            <button
+              onClick={() => rematchMutation.mutate()}
+              disabled={rematchMutation.isPending}
+              title="Re-scan loaded DAT files and update matching game names in your library"
+              className="btn-secondary flex items-center gap-1.5 text-sm"
+            >
+              <RefreshCw size={14} className={rematchMutation.isPending ? 'animate-spin text-brand-400' : ''} />
+              <span>{rematchMutation.isPending ? 'Re-matching…' : 'Re-Match'}</span>
+            </button>
+
             {/* Import */}
             <ImportButton onImport={handleStartImport} dirs={importDirs} setDirs={setImportDirs} />
 
@@ -221,6 +248,17 @@ export default function LibraryPage() {
             </button>
           </div>
         </div>
+
+        {/* Re-match Status Alert Banner */}
+        {rematchStatus && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-green-950/60 border-b border-green-700/50 text-green-300 text-xs font-medium">
+            <CheckCircle2 size={14} className="text-green-400 flex-shrink-0" />
+            <span>{rematchStatus}</span>
+            <button onClick={() => setRematchStatus(null)} className="ml-auto text-green-400 hover:text-white">
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {/* Selection bar */}
         {selectedIds.size > 0 && (
