@@ -40,14 +40,29 @@ def get_engine():
 
 
 def init_db():
-    """Create all tables and seed system definitions."""
+    """Create all tables, seed system definitions, and start fresh."""
     engine = get_engine()
     Base.metadata.create_all(engine)
     _migrate_schema(engine)
     _seed_systems(engine)
+    _clean_startup_library(engine)
     # Ensure media directory exists
     settings.media_dir.mkdir(parents=True, exist_ok=True)
     settings.files_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _clean_startup_library(engine):
+    """Ensure every start is a clean, fresh load."""
+    try:
+        with Session(engine) as session:
+            from backend.db.models import RomFile, Game, ImportJob, ExportJob
+            session.query(RomFile).delete()
+            session.query(Game).delete()
+            session.query(ImportJob).delete()
+            session.query(ExportJob).delete()
+            session.commit()
+    except Exception:
+        pass
 
 
 def _migrate_schema(engine):

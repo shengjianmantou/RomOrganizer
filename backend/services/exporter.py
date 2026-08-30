@@ -127,13 +127,6 @@ async def start_export(job_id: int) -> None:
                 rom_file = rom_files[0]
                 src_path = settings.library_dir / rom_file.library_path
 
-                # Skip if already in manifest
-                if (rom_file.sha1 and rom_file.sha1 in existing_hashes) or \
-                   (rom_file.md5 and rom_file.md5 in existing_hashes):
-                    skipped += 1
-                    emit({"type": "progress", "exported": exported, "skipped": skipped, "errors": errors, "total": total})
-                    continue
-
                 # Determine output path
                 dest_system_dir = export_dir / "roms" / sys_.esde_folder
                 dest_system_dir.mkdir(parents=True, exist_ok=True)
@@ -146,12 +139,6 @@ async def start_export(job_id: int) -> None:
                 )
 
                 if dest_filename:
-                    # Track in manifest
-                    if rom_file.sha1:
-                        existing_hashes.add(rom_file.sha1)
-                    if rom_file.md5:
-                        existing_hashes.add(rom_file.md5)
-
                     # Build gamelist entry
                     gamelists.setdefault(sys_.esde_folder, []).append({
                         "game": g,
@@ -407,23 +394,20 @@ def _write_rom(
         elif output_format == "zip":
             dest_name = stem + ".zip"
             dest = dest_dir / dest_name
-            if not dest.exists():
-                _compress_to_zip(src_path, dest)
+            _compress_to_zip(src_path, dest)
             return dest_name
 
         elif output_format == "7z":
             dest_name = stem + ".7z"
             dest = dest_dir / dest_name
-            if not dest.exists():
-                _compress_to_7z(src_path, dest)
+            _compress_to_7z(src_path, dest)
             return dest_name
 
         else:
             # Original format: keep original extension
             dest_name = f"{stem}{src_path.suffix}" if custom_title else src_path.name
             dest = dest_dir / dest_name
-            if not dest.exists():
-                shutil.copy2(str(src_path), str(dest))
+            shutil.copy2(str(src_path), str(dest))
             return dest_name
 
     except Exception as e:
