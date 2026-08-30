@@ -108,11 +108,11 @@ class ExportJob(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     game_ids: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list of game IDs
     export_dir: Mapped[str] = mapped_column(String(1024), nullable=False)
-    output_format: Mapped[str] = mapped_column(String(16), default="original")  # original, uncompressed, zip, 7z
+    output_format: Mapped[str] = mapped_column(String(16), default="uncompressed")  # uncompressed, original, zip, 7z
     dedup_mode: Mapped[str] = mapped_column(String(32), default="single")  # single, all
     lang_priority: Mapped[str] = mapped_column(String(64), default="En,Zh,Ja")  # comma-sep ordered list
     rename_files: Mapped[bool] = mapped_column(Boolean, default=True)
-    only_preferred_languages: Mapped[bool] = mapped_column(Boolean, default=False)
+    only_preferred_languages: Mapped[bool] = mapped_column(Boolean, default=True)
     status: Mapped[str] = mapped_column(String(32), default="pending")
     total_games: Mapped[int] = mapped_column(Integer, default=0)
     exported_games: Mapped[int] = mapped_column(Integer, default=0)

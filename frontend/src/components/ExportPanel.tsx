@@ -14,11 +14,11 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
     return localStorage.getItem('romorganizer_last_export_dir') || ''
   })
   const [picking, setPicking] = useState(false)
-  const [outputFormat, setOutputFormat] = useState<'original' | 'uncompressed' | 'zip' | '7z'>('original')
+  const [outputFormat, setOutputFormat] = useState<'original' | 'uncompressed' | 'zip' | '7z'>('uncompressed')
   const [dedupMode, setDedupMode] = useState<'single' | 'all'>('single')
   const [langPriority, setLangPriority] = useState('En,Zh,Ja')
   const [renameFiles, setRenameFiles] = useState(true)
-  const [onlyPreferredLanguages, setOnlyPreferredLanguages] = useState(false)
+  const [onlyPreferredLanguages, setOnlyPreferredLanguages] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
