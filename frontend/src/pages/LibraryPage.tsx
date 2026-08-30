@@ -34,7 +34,9 @@ export default function LibraryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [showFilters, setShowFilters] = useState(true)
   const [showExport, setShowExport] = useState(false)
-  const [importDirs, setImportDirs] = useState('')
+  const [importDirs, setImportDirs] = useState<string>(() => {
+    return localStorage.getItem('romorganizer_last_import_dir') || ''
+  })
   const [importJobId, setImportJobId] = useState<number | null>(null)
   const [exportJobId, setExportJobId] = useState<number | null>(null)
   const [inspectedGame, setInspectedGame] = useState<Game | null>(null)
@@ -475,7 +477,9 @@ function ImportButton({
     try {
       const selected = await pickDirectory('Select ROM Directory to Import')
       if (selected) {
-        setDirs(dirs.trim() ? `${dirs.trim()}\n${selected}` : selected)
+        const next = dirs.trim() ? `${dirs.trim()}\n${selected}` : selected
+        setDirs(next)
+        localStorage.setItem('romorganizer_last_import_dir', next)
       }
     } finally {
       setPicking(false)
@@ -508,7 +512,10 @@ function ImportButton({
           </p>
           <textarea
             value={dirs}
-            onChange={e => setDirs(e.target.value)}
+            onChange={e => {
+              setDirs(e.target.value)
+              localStorage.setItem('romorganizer_last_import_dir', e.target.value)
+            }}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
@@ -525,7 +532,7 @@ function ImportButton({
               Start Import
             </button>
             <button
-              onClick={() => { setDirs(''); setOpen(false) }}
+              onClick={() => setOpen(false)}
               className="btn-secondary text-sm"
             >
               Cancel

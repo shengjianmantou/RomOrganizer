@@ -10,7 +10,9 @@ interface Props {
 }
 
 export default function ExportPanel({ selectedIds, onClose, onExportStarted }: Props) {
-  const [exportDir, setExportDir] = useState('')
+  const [exportDir, setExportDir] = useState<string>(() => {
+    return localStorage.getItem('romorganizer_last_export_dir') || ''
+  })
   const [picking, setPicking] = useState(false)
   const [outputFormat, setOutputFormat] = useState<'original' | 'uncompressed' | 'zip' | '7z'>('original')
   const [dedupMode, setDedupMode] = useState<'single' | 'all'>('single')
@@ -26,6 +28,7 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
       const selected = await pickDirectory('Select Export Directory (e.g. MicroSD)')
       if (selected) {
         setExportDir(selected)
+        localStorage.setItem('romorganizer_last_export_dir', selected)
       }
     } finally {
       setPicking(false)
@@ -40,6 +43,7 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
     setError('')
     setLoading(true)
     try {
+      localStorage.setItem('romorganizer_last_export_dir', exportDir.trim())
       const options: ExportOptions = {
         game_ids: selectedIds,
         export_dir: exportDir.trim(),
