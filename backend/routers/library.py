@@ -210,6 +210,7 @@ def clear_library(db: Session = Depends(get_db)):
     import shutil
     from backend.config import settings
 
+    db.query(RomFile).delete()
     db.query(Game).delete()
     db.commit()
 
