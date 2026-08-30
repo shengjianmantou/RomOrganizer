@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { X, FolderOpen, Download } from 'lucide-react'
-import { startExport } from '../hooks/api'
+import { startExport, pickDirectory } from '../hooks/api'
 import type { ExportOptions } from '../types'
 
 interface Props {
@@ -11,11 +11,24 @@ interface Props {
 
 export default function ExportPanel({ selectedIds, onClose, onExportStarted }: Props) {
   const [exportDir, setExportDir] = useState('')
+  const [picking, setPicking] = useState(false)
   const [outputFormat, setOutputFormat] = useState<'original' | 'zip' | '7z'>('original')
   const [dedupMode, setDedupMode] = useState<'single' | 'all'>('single')
   const [langPriority, setLangPriority] = useState('En,Zh,Ja')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const handleBrowse = async () => {
+    setPicking(true)
+    try {
+      const selected = await pickDirectory('Select Export Directory (e.g. MicroSD)')
+      if (selected) {
+        setExportDir(selected)
+      }
+    } finally {
+      setPicking(false)
+    }
+  }
 
   const handleExport = async () => {
     if (!exportDir.trim()) {
@@ -66,15 +79,26 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
             <label className="block text-sm font-medium text-gray-300 mb-1.5">
               Export Directory
             </label>
-            <div className="relative">
-              <FolderOpen size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={exportDir}
-                onChange={e => setExportDir(e.target.value)}
-                className="input w-full pl-9 text-sm font-mono"
-                placeholder="/Volumes/MicroSD or /path/to/export"
-              />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <FolderOpen size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={exportDir}
+                  onChange={e => setExportDir(e.target.value)}
+                  className="input w-full pl-9 text-sm font-mono"
+                  placeholder="/Volumes/MicroSD or /path/to/export"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleBrowse}
+                disabled={picking}
+                className="btn-secondary text-sm px-3 flex items-center gap-1.5 whitespace-nowrap"
+              >
+                {picking ? <span className="animate-spin">⟳</span> : <FolderOpen size={15} />}
+                Browse…
+              </button>
             </div>
             <p className="text-xs text-gray-500 mt-1">
               Will create <code className="text-gray-400">roms/</code> and <code className="text-gray-400">RomOrganizer/</code> subdirectories. Existing files are never overwritten.

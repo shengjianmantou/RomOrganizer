@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  LayoutGrid, List, Download, Upload, Search, X, SlidersHorizontal, RefreshCw,
+  LayoutGrid, List, Download, Upload, Search, X, SlidersHorizontal, RefreshCw, FolderOpen,
 } from 'lucide-react'
 import clsx from 'clsx'
 
-import { fetchGames, fetchSystems, fetchFilterOptions, fetchLibraryStats, startImport } from '../hooks/api'
+import { fetchGames, fetchSystems, fetchFilterOptions, fetchLibraryStats, startImport, pickDirectory } from '../hooks/api'
 import type { Game, LibraryFilters, System } from '../types'
 import GameGrid from '../components/GameGrid'
 import GameTable from '../components/GameTable'
@@ -296,6 +296,20 @@ function ImportButton({
   setDirs: (v: string) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [picking, setPicking] = useState(false)
+
+  const handleBrowse = async () => {
+    setPicking(true)
+    try {
+      const selected = await pickDirectory('Select ROM Directory to Import')
+      if (selected) {
+        setDirs(dirs.trim() ? `${dirs.trim()}\n${selected}` : selected)
+      }
+    } finally {
+      setPicking(false)
+    }
+  }
+
   return (
     <div className="relative">
       <button
@@ -305,16 +319,28 @@ function ImportButton({
         <Upload size={15} /> Import
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 card p-4 z-50 shadow-2xl">
-          <p className="text-sm font-medium mb-2">Import ROM Directories</p>
-          <p className="text-xs text-gray-400 mb-2">Enter one directory path per line (read-only):</p>
+        <div className="absolute right-0 top-full mt-2 w-96 card p-4 z-50 shadow-2xl">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-semibold text-white">Import ROM Directories</p>
+            <button
+              onClick={handleBrowse}
+              disabled={picking}
+              className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 bg-brand-500/10 px-2 py-1 rounded border border-brand-500/20"
+            >
+              {picking ? <span className="animate-spin">⟳</span> : <FolderOpen size={13} />}
+              Select Folder…
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mb-2">
+            Select a folder using the dialog or enter one directory path per line (read-only):
+          </p>
           <textarea
             value={dirs}
             onChange={e => setDirs(e.target.value)}
-            className="input w-full text-sm font-mono h-28 resize-none"
+            className="input w-full text-sm font-mono h-28 resize-none mb-2"
             placeholder="/path/to/roms&#10;/another/path"
           />
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-2">
             <button
               onClick={() => { onImport(); setOpen(false) }}
               disabled={!dirs.trim()}

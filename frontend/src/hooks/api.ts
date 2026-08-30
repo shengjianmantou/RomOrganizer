@@ -97,4 +97,12 @@ export async function updateSettings(settings: Record<string, unknown>) {
   return data
 }
 
+// ── Filesystem Dialog ─────────────────────────────────────────────────────────
+
+export async function pickDirectory(prompt = 'Select Directory'): Promise<string | null> {
+  const { data } = await api.post<{ path: string | null; canceled: boolean }>('/filesystem/pick-directory', { prompt })
+  if (data.canceled || !data.path) return null
+  return data.path
+}
+
 export default api

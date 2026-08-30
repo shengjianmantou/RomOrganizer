@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.db.database import init_db
-from backend.routers import export_jobs, import_jobs, library, settings, systems
+from backend.routers import export_jobs, filesystem, import_jobs, library, settings, systems
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,6 +49,7 @@ app.include_router(systems.router)
 app.include_router(import_jobs.router)
 app.include_router(export_jobs.router)
 app.include_router(settings.router)
+app.include_router(filesystem.router)
 
 # Serve media files (cover art, screenshots)
 from backend.config import settings as cfg
