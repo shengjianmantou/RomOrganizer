@@ -43,10 +43,27 @@ def init_db():
     """Create all tables and seed system definitions."""
     engine = get_engine()
     Base.metadata.create_all(engine)
+    _migrate_schema(engine)
     _seed_systems(engine)
     # Ensure media directory exists
     settings.media_dir.mkdir(parents=True, exist_ok=True)
     settings.files_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _migrate_schema(engine):
+    """Safely apply schema migrations for SQLite."""
+    with engine.connect() as conn:
+        try:
+            res = conn.exec_driver_sql("PRAGMA table_info(export_jobs)").fetchall()
+            cols = {row[1] for row in res}
+            if cols:
+                if "rename_files" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE export_jobs ADD COLUMN rename_files BOOLEAN DEFAULT 1")
+                if "only_preferred_languages" not in cols:
+                    conn.exec_driver_sql("ALTER TABLE export_jobs ADD COLUMN only_preferred_languages BOOLEAN DEFAULT 0")
+                conn.commit()
+        except Exception:
+            pass
 
 
 def _seed_systems(engine):
