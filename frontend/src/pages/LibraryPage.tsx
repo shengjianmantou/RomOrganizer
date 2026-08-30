@@ -26,7 +26,9 @@ const DEFAULT_FILTERS: LibraryFilters = {
 }
 
 export default function LibraryPage() {
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    return (localStorage.getItem('romorganizer_view_mode') as 'grid' | 'list') || 'grid'
+  })
   const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS)
   const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -154,19 +156,39 @@ export default function LibraryPage() {
           </span>
 
           <div className="ml-auto flex items-center gap-2">
-            {/* View toggle */}
-            <div className="flex rounded-lg overflow-hidden border border-gray-700">
+            {/* View toggle (Grid / List) */}
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 bg-gray-850 p-0.5">
               <button
-                onClick={() => setViewMode('grid')}
-                className={clsx('p-2', viewMode === 'grid' ? 'bg-brand-500 text-white' : 'bg-gray-800 text-gray-400 hover:text-white')}
+                onClick={() => {
+                  setViewMode('grid')
+                  localStorage.setItem('romorganizer_view_mode', 'grid')
+                }}
+                title="Switch to Grid View (Cover Art)"
+                className={clsx(
+                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  viewMode === 'grid'
+                    ? 'bg-brand-500 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-750',
+                )}
               >
-                <LayoutGrid size={16} />
+                <LayoutGrid size={14} />
+                <span>Grid</span>
               </button>
               <button
-                onClick={() => setViewMode('list')}
-                className={clsx('p-2', viewMode === 'list' ? 'bg-brand-500 text-white' : 'bg-gray-800 text-gray-400 hover:text-white')}
+                onClick={() => {
+                  setViewMode('list')
+                  localStorage.setItem('romorganizer_view_mode', 'list')
+                }}
+                title="Switch to List View (Table)"
+                className={clsx(
+                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+                  viewMode === 'list'
+                    ? 'bg-brand-500 text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-750',
+                )}
               >
-                <List size={16} />
+                <List size={14} />
+                <span>List</span>
               </button>
             </div>
 
