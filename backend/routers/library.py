@@ -75,6 +75,7 @@ def list_games(
     series: Optional[str] = None,
     year_min: Optional[int] = None,
     year_max: Optional[int] = None,
+    verified: Optional[str] = Query(None, enum=["all", "verified", "unverified"]),
     sort_by: str = Query("sort_title", enum=["sort_title", "title", "release_year", "system_id"]),
     sort_dir: str = Query("asc", enum=["asc", "desc"]),
 ):
@@ -87,6 +88,11 @@ def list_games(
         ids = [int(x) for x in system_ids.split(",") if x.strip().isdigit()]
         if ids:
             q = q.filter(Game.system_id.in_(ids))
+
+    if verified == "verified":
+        q = q.filter(Game.no_intro_name.isnot(None))
+    elif verified == "unverified":
+        q = q.filter(Game.no_intro_name.is_(None))
 
     if languages:
         lang_list = [l.strip() for l in languages.split(",") if l.strip()]

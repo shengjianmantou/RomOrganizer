@@ -29,6 +29,7 @@ export async function fetchGames(
   if (filters.series) params.series = filters.series
   if (filters.year_min != null) params.year_min = String(filters.year_min)
   if (filters.year_max != null) params.year_max = String(filters.year_max)
+  if (filters.verified && filters.verified !== 'all') params.verified = filters.verified
   if (filters.sort_by) params.sort_by = filters.sort_by
   if (filters.sort_dir) params.sort_dir = filters.sort_dir
   const { data } = await api.get<GamesResponse>('/library/games', { params })

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  LayoutGrid, List, Download, Upload, Search, X, SlidersHorizontal, RefreshCw, FolderOpen,
+  LayoutGrid, List, Download, Upload, Search, X, SlidersHorizontal, RefreshCw, FolderOpen, ShieldCheck,
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -156,6 +156,21 @@ export default function LibraryPage() {
           </span>
 
           <div className="ml-auto flex items-center gap-2">
+            {/* Quick Verified Toggle */}
+            <button
+              onClick={() => handleFiltersChange({ verified: filters.verified === 'verified' ? 'all' : 'verified' })}
+              title="Toggle Verified ROMs (No-Intro / Redump Checksum Match)"
+              className={clsx(
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                filters.verified === 'verified'
+                  ? 'bg-green-950/70 border-green-700 text-green-300 shadow-sm'
+                  : 'bg-gray-800/80 border-gray-700 text-gray-400 hover:text-white hover:border-gray-600',
+              )}
+            >
+              <ShieldCheck size={14} className={filters.verified === 'verified' ? 'text-green-400' : 'text-gray-500'} />
+              <span>Verified Only</span>
+            </button>
+
             {/* View toggle (Grid / List) */}
             <div className="flex rounded-lg overflow-hidden border border-gray-700 bg-gray-850 p-0.5">
               <button

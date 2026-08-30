@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react'
 import clsx from 'clsx'
 import type { FilterOptions, LibraryFilters, System } from '../types'
 
@@ -24,11 +24,42 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
         {/* Reset */}
         <button
-          onClick={() => onChange({ system_ids: [], languages: [], regions: [], genres: [], series: '' })}
+          onClick={() => onChange({ system_ids: [], languages: [], regions: [], genres: [], series: '', verified: 'all' })}
           className="text-xs text-brand-400 hover:text-brand-300 mb-2"
         >
           Reset all filters
         </button>
+
+        {/* Verification Status */}
+        <FilterSection title="Status">
+          <div className="space-y-1">
+            {[
+              { id: 'all', label: 'All Games' },
+              { id: 'verified', label: '🛡️ Verified Only' },
+              { id: 'unverified', label: 'Unverified / Custom' },
+            ].map(item => (
+              <label
+                key={item.id}
+                className={clsx(
+                  'flex items-center gap-2 text-xs py-1 px-1.5 rounded cursor-pointer transition-colors',
+                  (filters.verified || 'all') === item.id
+                    ? 'bg-brand-500/20 text-white font-medium'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-800',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="verified_status"
+                  value={item.id}
+                  checked={(filters.verified || 'all') === item.id}
+                  onChange={() => onChange({ verified: item.id as 'all' | 'verified' | 'unverified' })}
+                  className="accent-brand-500"
+                />
+                <span>{item.label}</span>
+              </label>
+            ))}
+          </div>
+        </FilterSection>
 
         {/* Systems */}
         <FilterSection title="System">

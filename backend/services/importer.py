@@ -159,16 +159,37 @@ async def _process_rom(
         loop = asyncio.get_event_loop()
         hashes = await loop.run_in_executor(None, hasher.compute_hashes, rom_path)
 
-        # 2. Absolute dedup check — skip if exact hash already in library
-        if dat_matcher.is_duplicate_hash(
-            crc32=hashes.crc32, md5=hashes.md5, sha1=hashes.sha1
-        ):
-            return "skipped"
-
-        # 3. DAT lookup (with header-aware matching)
+        # 2. Check for DAT lookup (with header-aware matching)
         dat_entry = dat_matcher.lookup(
             crc32=hashes.crc32, md5=hashes.md5, sha1=hashes.sha1, hashes=hashes
         )
+
+        # 3. Absolute dedup check — if already in library, update metadata if new DAT match found
+        if dat_matcher.is_duplicate_hash(
+            crc32=hashes.crc32, md5=hashes.md5, sha1=hashes.sha1
+        ):
+            if dat_entry:
+                from backend.db.models import RomFile
+                with get_session() as session:
+                    rf = (
+                        session.query(RomFile)
+                        .filter(
+                            (RomFile.sha1 == (hashes.sha1 or "").lower())
+                            | (RomFile.md5 == (hashes.md5 or "").lower())
+                            | (RomFile.crc32 == (hashes.crc32 or "").lower().zfill(8))
+                        )
+                        .first()
+                    )
+                    if rf and rf.game:
+                        rf.game.title = dat_entry.name
+                        rf.game.sort_title = _make_sort_title(dat_entry.name)
+                        rf.game.no_intro_name = dat_entry.name
+                        rf.game.region = dat_entry.region
+                        if dat_entry.languages:
+                            rf.game.languages = ",".join(dat_entry.languages)
+                        rf.dat_matched = True
+                        session.commit()
+            return "skipped"
 
         # 4. Filename parse (always done for fallback)
         parsed = filename_parser.parse_rom_filename(rom_path.name)

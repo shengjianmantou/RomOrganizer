@@ -67,6 +67,7 @@ export interface LibraryFilters {
   series: string
   year_min?: number
   year_max?: number
+  verified?: 'all' | 'verified' | 'unverified'
   sort_by: string
   sort_dir: 'asc' | 'desc'
 }
