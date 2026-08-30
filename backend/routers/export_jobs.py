@@ -20,9 +20,11 @@ router = APIRouter(prefix="/api/export", tags=["export"])
 class ExportRequest(BaseModel):
     game_ids: list[int]
     export_dir: str
-    output_format: str = "original"  # original, zip, 7z
+    output_format: str = "original"  # original, uncompressed, zip, 7z
     dedup_mode: str = "single"        # single, all
     lang_priority: str = "En,Zh,Ja"  # comma-separated priority list
+    rename_files: bool = True
+    only_preferred_languages: bool = False
 
 
 class ExportJobOut(BaseModel):
@@ -31,6 +33,8 @@ class ExportJobOut(BaseModel):
     output_format: str
     dedup_mode: str
     lang_priority: str
+    rename_files: bool = True
+    only_preferred_languages: bool = False
     status: str
     total_games: int
     exported_games: int
@@ -54,6 +58,8 @@ async def start_export(
         output_format=req.output_format,
         dedup_mode=req.dedup_mode,
         lang_priority=req.lang_priority,
+        rename_files=req.rename_files,
+        only_preferred_languages=req.only_preferred_languages,
         status="pending",
     )
     db.add(job)

@@ -61,7 +61,9 @@ async def start_export(job_id: int) -> None:
         export_dir = Path(job.export_dir)
         output_format = job.output_format
         dedup_mode = job.dedup_mode
-        lang_priority = [l.strip() for l in job.lang_priority.split(",")]
+        lang_priority = [l.strip() for l in job.lang_priority.split(",") if l.strip()]
+        rename_files = getattr(job, "rename_files", True)
+        only_preferred_languages = getattr(job, "only_preferred_languages", False)
 
     try:
         export_dir.mkdir(parents=True, exist_ok=True)
@@ -80,6 +82,13 @@ async def start_export(job_id: int) -> None:
                 system = g.system
                 rom_files = list(g.rom_files)
                 games_data.append((g, system, rom_files))
+
+        # Optional: Discard foreign games not matching preferred languages
+        if only_preferred_languages:
+            games_data = [
+                item for item in games_data
+                if _is_preferred_language(item[0], lang_priority)
+            ]
 
         total = len(games_data)
         with get_session() as session:
@@ -129,9 +138,11 @@ async def start_export(job_id: int) -> None:
                 dest_system_dir = export_dir / "roms" / sys_.esde_folder
                 dest_system_dir.mkdir(parents=True, exist_ok=True)
 
+                custom_title = g.title if rename_files else None
+
                 loop = asyncio.get_event_loop()
                 dest_filename = await loop.run_in_executor(
-                    None, _write_rom, src_path, dest_system_dir, output_format
+                    None, _write_rom, src_path, dest_system_dir, output_format, custom_title
                 )
 
                 if dest_filename:
@@ -199,62 +210,221 @@ async def start_export(job_id: int) -> None:
         _export_queues.pop(job_id, None)
 
 
+import re
+import tempfile
+from backend.services.hasher import ROM_EXTENSIONS, _pick_best_rom_candidate
+
+
+def _sanitize_filename(name: str) -> str:
+    """Sanitize title for filesystem usage."""
+    s = re.sub(r'[\/\\:\*\?"<>\|]', '_', name).strip()
+    return s or "game"
+
+
 def _normalize_title(title: str) -> str:
-    """Normalize title for grouping (lowercase, strip articles)."""
-    t = title.lower().strip()
+    """
+    Normalize title for 1G1R deduplication.
+    Strips all parentheses (tags), brackets, revisions, versions, leading articles,
+    and non-alphanumeric punctuation so variants like 'Dr. Mario (Europe)' and
+    'Dr. Mario (Japan, USA)' produce the exact same key 'drmario'.
+    """
+    # Strip (tag) and [tag]
+    t = re.sub(r"\s*[\(\[].*?[\)\]]", "", title)
+    t = t.lower().strip()
+    # Strip leading articles
     for article in ("the ", "a ", "an "):
         if t.startswith(article):
             t = t[len(article):]
-    return t
+    # Remove all non-alphanumeric characters
+    t = re.sub(r"[^a-z0-9]", "", t)
+    return t or title.lower().strip()
+
+
+def _is_preferred_language(game: Game, lang_priority: list[str]) -> bool:
+    """Check if game matches any preferred language or region."""
+    t_lower = game.title.lower()
+    r_lower = (game.region or "").lower()
+    langs = [l.strip().lower() for l in (game.languages or "").split(",") if l.strip()]
+
+    # If game has English, USA, World, Europe, or Chinese
+    if any(k in r_lower for k in ["usa", "us", "world", "europe", "uk", "china", "taiwan", "hong kong"]):
+        return True
+    if any(k in t_lower for k in ["(usa)", "(u)", "(world)", "(w)", "(europe)", "(e)", "(eur)", "(china)", "(taiwan)", "[zh]"]):
+        return True
+    if any(l in ["en", "eng", "zh", "zhs", "zht"] for l in langs):
+        return True
+
+    # Check against user-provided priority list
+    for p in lang_priority:
+        p_lower = p.lower()
+        if p_lower in langs or p_lower in r_lower:
+            return True
+
+    return False
 
 
 def _pick_best_version(
     group: list[tuple[Game, System, list[RomFile]]],
     lang_priority: list[str],
 ) -> tuple[Game, System, list[RomFile]]:
-    """From a group of same-title games, pick best by language priority."""
-    def score(item):
+    """
+    From a group of same-title games (variants), pick the best single version.
+    Priority order:
+      1. Retail release over Beta / Proto / Demo / Hack / Bad dump
+      2. USA / North America / En
+      3. World / En
+      4. Europe / UK / En
+      5. Chinese (China / Taiwan / Hong Kong / Zh)
+      6. Custom language priority from settings
+      7. Other foreign languages
+      8. Higher revision over base release (Rev 1 > Rev 0)
+    """
+    def score(item: tuple[Game, System, list[RomFile]]) -> tuple[int, float, int]:
         g, _, _ = item
-        langs = [l.strip() for l in (g.languages or "").split(",") if l.strip()]
-        parsed = parse_rom_filename(g.title)
-        parsed.languages = langs or parsed.languages
-        pri_score = parsed.lang_priority_score(lang_priority)
-        # Prefer non-special (no Beta/Demo/Proto)
-        special_penalty = 100 if parsed.is_special else 0
-        return (special_penalty + pri_score,)
+        t_lower = g.title.lower()
+        r_lower = (g.region or "").lower()
+        langs = [l.strip().lower() for l in (g.languages or "").split(",") if l.strip()]
+
+        # 1. Beta / Demo / Proto / Hack penalty
+        is_special = any(
+            w in t_lower
+            for w in ["beta", "proto", "sample", "demo", "hack", "unl", "bad", "[b", "[h", "[t", "[o"]
+        )
+        special_penalty = 100 if is_special else 0
+
+        # 2. Region / Language Rank
+        if "usa" in r_lower or "(usa)" in t_lower or "(u)" in t_lower or "(ju)" in t_lower:
+            rank = 1.0  # USA
+        elif "world" in r_lower or "(world)" in t_lower or "(w)" in t_lower:
+            rank = 2.0  # World
+        elif "europe" in r_lower or "(europe)" in t_lower or "(e)" in t_lower or "(eur)" in t_lower or "uk" in r_lower:
+            rank = 3.0  # Europe
+        elif any(z in r_lower for z in ["china", "taiwan", "hong kong"]) or any(z in langs for z in ["zh", "zhs", "zht"]):
+            rank = 4.0  # Chinese
+        elif "en" in langs or "eng" in langs:
+            rank = 3.5  # Other English
+        else:
+            # Check user custom priority
+            parsed = parse_rom_filename(g.title)
+            parsed.languages = langs or parsed.languages
+            user_score = parsed.lang_priority_score(lang_priority)
+            rank = 10.0 + user_score
+
+        # 3. Revision score (higher revision -> lower negative score for min())
+        rev_match = re.search(r"rev\s*([a-z0-9]+)", t_lower)
+        rev_score = 0
+        if rev_match:
+            val = rev_match.group(1)
+            rev_score = -int(val) if val.isdigit() else -(ord(val[0]) - ord('a') + 1)
+
+        return (special_penalty, rank, rev_score)
 
     return min(group, key=score)
 
 
-def _write_rom(src_path: Path, dest_dir: Path, output_format: str) -> str | None:
-    """Write a ROM to dest_dir in the desired format. Returns dest filename or None."""
+def _extract_uncompressed_rom(src_path: Path, dest_dir: Path, custom_stem: str | None = None) -> str | None:
+    """Extract raw uncompressed ROM from an archive or copy raw ROM file directly."""
+    ext = src_path.suffix.lower()
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    if ext == ".zip":
+        try:
+            with zipfile.ZipFile(src_path, "r") as zf:
+                rom_names = [n for n in zf.namelist() if Path(n).suffix.lower() in ROM_EXTENSIONS and not n.endswith("/")]
+                target = _pick_best_rom_candidate(rom_names) if rom_names else (zf.namelist()[0] if zf.namelist() else None)
+                if not target:
+                    return None
+                rom_ext = Path(target).suffix
+                out_name = f"{custom_stem}{rom_ext}" if custom_stem else Path(target).name
+                dest_file = dest_dir / out_name
+                with zf.open(target) as entry, open(dest_file, "wb") as out_f:
+                    shutil.copyfileobj(entry, out_f)
+                return out_name
+        except Exception as e:
+            log.warning(f"Failed to uncompress zip {src_path}: {e}")
+            return None
+
+    elif ext == ".7z":
+        try:
+            import py7zr
+            with py7zr.SevenZipFile(src_path, "r") as szf:
+                rom_names = [n for n in szf.getnames() if Path(n).suffix.lower() in ROM_EXTENSIONS]
+                target = _pick_best_rom_candidate(rom_names) if rom_names else (szf.getnames()[0] if szf.getnames() else None)
+                if not target:
+                    return None
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    szf.extract(path=tmpdir, targets=[target])
+                    temp_file = Path(tmpdir) / target
+                    rom_ext = temp_file.suffix
+                    out_name = f"{custom_stem}{rom_ext}" if custom_stem else temp_file.name
+                    dest_file = dest_dir / out_name
+                    shutil.copy2(str(temp_file), str(dest_file))
+                    return out_name
+        except Exception as e:
+            log.warning(f"Failed to uncompress 7z {src_path}: {e}")
+            return None
+
+    elif ext == ".rar":
+        try:
+            import rarfile
+            with rarfile.RarFile(src_path, "r") as rf:
+                rom_names = [i.filename for i in rf.infolist() if not i.isdir() and Path(i.filename).suffix.lower() in ROM_EXTENSIONS]
+                target = _pick_best_rom_candidate(rom_names) if rom_names else (rf.infolist()[0].filename if rf.infolist() else None)
+                if not target:
+                    return None
+                rom_ext = Path(target).suffix
+                out_name = f"{custom_stem}{rom_ext}" if custom_stem else Path(target).name
+                dest_file = dest_dir / out_name
+                with rf.open(target) as entry, open(dest_file, "wb") as out_f:
+                    shutil.copyfileobj(entry, out_f)
+                return out_name
+        except Exception as e:
+            log.warning(f"Failed to uncompress rar {src_path}: {e}")
+            return None
+
+    else:
+        # Already an uncompressed raw ROM file
+        rom_ext = src_path.suffix
+        out_name = f"{custom_stem}{rom_ext}" if custom_stem else src_path.name
+        dest_file = dest_dir / out_name
+        shutil.copy2(str(src_path), str(dest_file))
+        return out_name
+
+
+def _write_rom(
+    src_path: Path,
+    dest_dir: Path,
+    output_format: str,
+    custom_title: str | None = None,
+) -> str | None:
+    """Write a ROM to dest_dir in the desired format, optionally renaming it."""
     try:
-        if output_format == "original" or output_format == src_path.suffix.lower().lstrip("."):
-            dest = dest_dir / src_path.name
-            if not dest.exists():
-                shutil.copy2(str(src_path), str(dest))
-            return src_path.name
+        stem = _sanitize_filename(custom_title) if custom_title else src_path.stem
+
+        if output_format == "uncompressed":
+            return _extract_uncompressed_rom(src_path, dest_dir, custom_stem=stem if custom_title else None)
 
         elif output_format == "zip":
-            dest_name = src_path.stem + ".zip"
+            dest_name = stem + ".zip"
             dest = dest_dir / dest_name
             if not dest.exists():
                 _compress_to_zip(src_path, dest)
             return dest_name
 
         elif output_format == "7z":
-            dest_name = src_path.stem + ".7z"
+            dest_name = stem + ".7z"
             dest = dest_dir / dest_name
             if not dest.exists():
                 _compress_to_7z(src_path, dest)
             return dest_name
 
         else:
-            # Fallback: copy as-is
-            dest = dest_dir / src_path.name
+            # Original format: keep original extension
+            dest_name = f"{stem}{src_path.suffix}" if custom_title else src_path.name
+            dest = dest_dir / dest_name
             if not dest.exists():
                 shutil.copy2(str(src_path), str(dest))
-            return src_path.name
+            return dest_name
 
     except Exception as e:
         log.warning(f"Failed to write ROM {src_path}: {e}")
@@ -263,7 +433,6 @@ def _write_rom(src_path: Path, dest_dir: Path, output_format: str) -> str | None
 
 def _compress_to_zip(src: Path, dest: Path) -> None:
     """Compress src ROM file into a ZIP archive."""
-    # If src is already a zip, copy as-is
     if src.suffix.lower() == ".zip":
         shutil.copy2(str(src), str(dest))
         return

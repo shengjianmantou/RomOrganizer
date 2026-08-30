@@ -12,9 +12,11 @@ interface Props {
 export default function ExportPanel({ selectedIds, onClose, onExportStarted }: Props) {
   const [exportDir, setExportDir] = useState('')
   const [picking, setPicking] = useState(false)
-  const [outputFormat, setOutputFormat] = useState<'original' | 'zip' | '7z'>('original')
+  const [outputFormat, setOutputFormat] = useState<'original' | 'uncompressed' | 'zip' | '7z'>('original')
   const [dedupMode, setDedupMode] = useState<'single' | 'all'>('single')
   const [langPriority, setLangPriority] = useState('En,Zh,Ja')
+  const [renameFiles, setRenameFiles] = useState(true)
+  const [onlyPreferredLanguages, setOnlyPreferredLanguages] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -44,6 +46,8 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
         output_format: outputFormat,
         dedup_mode: dedupMode,
         lang_priority: langPriority,
+        rename_files: renameFiles,
+        only_preferred_languages: onlyPreferredLanguages,
       }
       const job = await startExport(options)
       onExportStarted(job.id)
@@ -56,7 +60,7 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="card w-full max-w-md mx-4 shadow-2xl">
+      <div className="card w-full max-w-lg mx-4 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
           <div className="flex items-center gap-2">
@@ -68,7 +72,7 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
           </button>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
           {/* Game count */}
           <p className="text-sm text-gray-300">
             Exporting <span className="font-semibold text-white">{selectedIds.length}</span> selected game{selectedIds.length !== 1 ? 's' : ''}.
@@ -110,30 +114,56 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
             <label className="block text-sm font-medium text-gray-300 mb-1.5">
               ROM Format
             </label>
-            <div className="flex gap-2">
-              {(['original', 'zip', '7z'] as const).map(fmt => (
+            <div className="grid grid-cols-4 gap-2">
+              {(
+                [
+                  { id: 'original', label: 'Original' },
+                  { id: 'uncompressed', label: 'Uncompressed' },
+                  { id: 'zip', label: 'ZIP' },
+                  { id: '7z', label: '7Z' },
+                ] as const
+              ).map(fmt => (
                 <button
-                  key={fmt}
-                  onClick={() => setOutputFormat(fmt)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                    outputFormat === fmt
-                      ? 'bg-brand-500 border-brand-500 text-white'
+                  key={fmt.id}
+                  onClick={() => setOutputFormat(fmt.id)}
+                  className={`py-2 px-1 rounded-lg text-xs font-medium border transition-colors text-center ${
+                    outputFormat === fmt.id
+                      ? 'bg-brand-500 border-brand-500 text-white shadow-sm'
                       : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
                   }`}
                 >
-                  {fmt === 'original' ? 'Original' : fmt.toUpperCase()}
+                  {fmt.label}
                 </button>
               ))}
             </div>
-            {outputFormat === 'original' && (
-              <p className="text-xs text-gray-500 mt-1">Files are copied as-is (zip stays zip, raw stays raw).</p>
-            )}
+            <p className="text-xs text-gray-500 mt-1">
+              {outputFormat === 'original' && 'Files are copied as-is (archives stay archives, raw stays raw).'}
+              {outputFormat === 'uncompressed' && 'Extracts raw ROM files (.nes, .sfc, .z64) from zip/7z/rar archives.'}
+              {outputFormat === 'zip' && 'Compresses or keeps games in standard ZIP archives.'}
+              {outputFormat === '7z' && 'Compresses or keeps games in high-compression 7Z archives.'}
+            </p>
+          </div>
+
+          {/* File renaming option */}
+          <div className="pt-1">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={renameFiles}
+                onChange={e => setRenameFiles(e.target.checked)}
+                className="accent-brand-500 rounded cursor-pointer"
+              />
+              <span className="text-sm text-gray-200">Rename exported files to official game names</span>
+            </label>
+            <p className="text-xs text-gray-500 ml-6 mt-0.5">
+              {renameFiles ? 'e.g. "Dr. Mario (Japan, USA).nes"' : 'Preserves original incoming filenames (e.g. "dr_mario_(ju).zip")'}
+            </p>
           </div>
 
           {/* Dedup mode */}
-          <div>
+          <div className="pt-1 border-t border-gray-800">
             <label className="block text-sm font-medium text-gray-300 mb-1.5">
-              Duplicate Handling
+              Duplicate Handling (1G1R)
             </label>
             <div className="space-y-2">
               <label className="flex items-start gap-3 cursor-pointer group">
@@ -146,8 +176,10 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
                   className="mt-0.5 accent-brand-500"
                 />
                 <div>
-                  <p className="text-sm text-gray-200 group-hover:text-white">Best version only (recommended)</p>
-                  <p className="text-xs text-gray-500">One version per game, chosen by language priority.</p>
+                  <p className="text-sm text-gray-200 group-hover:text-white">1G1R: Best version only (recommended)</p>
+                  <p className="text-xs text-gray-500">
+                    Groups regional duplicates together and prioritizes <strong>USA/En → World → Europe → Chinese</strong> releases.
+                  </p>
                 </div>
               </label>
               <label className="flex items-start gap-3 cursor-pointer group">
@@ -161,28 +193,40 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
                 />
                 <div>
                   <p className="text-sm text-gray-200 group-hover:text-white">All versions</p>
-                  <p className="text-xs text-gray-500">Export all selected variants (multiple regions/languages).</p>
+                  <p className="text-xs text-gray-500">Export all selected variants without deduplication.</p>
                 </div>
               </label>
             </div>
           </div>
 
-          {/* Language priority */}
+          {/* Filter out un-understood foreign languages */}
           {dedupMode === 'single' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                Language Priority <span className="text-gray-500 font-normal">(comma-separated, highest first)</span>
+            <div className="space-y-3 pt-1">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={onlyPreferredLanguages}
+                  onChange={e => setOnlyPreferredLanguages(e.target.checked)}
+                  className="accent-brand-500 rounded cursor-pointer"
+                />
+                <span className="text-sm text-gray-200">Only export English, World & Chinese games</span>
               </label>
-              <input
-                type="text"
-                value={langPriority}
-                onChange={e => setLangPriority(e.target.value)}
-                className="input w-full text-sm"
-                placeholder="En,Zh,Ja"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Common codes: En, Zh, Ja, Fr, De, Es, It, Pt, Ko, Ru
+              <p className="text-xs text-gray-500 ml-6">
+                Skips games that only exist in languages you don't understand (e.g. Japanese-only or German-only).
               </p>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1">
+                  Custom Language Priority Order
+                </label>
+                <input
+                  type="text"
+                  value={langPriority}
+                  onChange={e => setLangPriority(e.target.value)}
+                  className="input w-full text-xs"
+                  placeholder="En,Zh,Ja"
+                />
+              </div>
             </div>
           )}
 
@@ -192,7 +236,7 @@ export default function ExportPanel({ selectedIds, onClose, onExportStarted }: P
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 px-5 pb-5">
+        <div className="flex gap-3 px-5 pb-5 pt-2 border-t border-gray-800">
           <button onClick={onClose} className="btn-secondary flex-1">
             Cancel
           </button>

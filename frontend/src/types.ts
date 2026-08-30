@@ -96,6 +96,8 @@ export interface ExportJob {
   output_format: string
   dedup_mode: string
   lang_priority: string
+  rename_files?: boolean
+  only_preferred_languages?: boolean
   status: string
   total_games: number
   exported_games: number
@@ -106,7 +108,9 @@ export interface ExportJob {
 export interface ExportOptions {
   game_ids: number[]
   export_dir: string
-  output_format: 'original' | 'zip' | '7z'
+  output_format: 'original' | 'uncompressed' | 'zip' | '7z'
   dedup_mode: 'single' | 'all'
   lang_priority: string
+  rename_files?: boolean
+  only_preferred_languages?: boolean
 }
