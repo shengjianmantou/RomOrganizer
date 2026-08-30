@@ -407,6 +407,15 @@ def _write_rom(
 ) -> str | None:
     """Write a ROM to dest_dir in the desired format, optionally renaming it."""
     try:
+        from backend.services import arcade_matcher
+        # Arcade sets (MAME / NeoGeo / FBNeo) must always remain intact archive packages
+        is_arcade = dest_dir.name in ("mame", "neogeo", "arcade", "fbneo") or arcade_matcher.is_arcade_set(src_path)
+        if is_arcade:
+            dest_name = src_path.name
+            dest = dest_dir / dest_name
+            shutil.copy2(str(src_path), str(dest))
+            return dest_name
+
         stem = _sanitize_filename(custom_title) if custom_title else src_path.stem
 
         if output_format == "uncompressed":

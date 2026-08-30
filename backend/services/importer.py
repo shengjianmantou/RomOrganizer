@@ -209,11 +209,20 @@ async def _process_rom(
             dat_matched = True
             no_intro_name = dat_entry.name
         else:
-            title = parsed.clean_title or rom_path.stem
-            region = parsed.region
-            languages = parsed.languages
-            dat_matched = False
-            no_intro_name = None
+            from backend.services import arcade_matcher
+            arcade_title = arcade_matcher.get_arcade_title(rom_path.stem)
+            if arcade_title:
+                title = arcade_title
+                region = "World"
+                languages = ["En"]
+                dat_matched = True
+                no_intro_name = arcade_title
+            else:
+                title = parsed.clean_title or rom_path.stem
+                region = parsed.region
+                languages = parsed.languages
+                dat_matched = False
+                no_intro_name = None
 
         # 7. Copy ROM to library
         dest_dir = settings.files_dir / system.esde_folder
@@ -394,13 +403,27 @@ def _resolve_system(
                 return c
         return candidates[0]
 
-    # 4. From file extension directly
+    # 4. Check if this is an Arcade driver set (MAME / Neo-Geo / FBNeo)
+    from backend.services import arcade_matcher
+    if arcade_matcher.is_arcade_set(rom_path):
+        for candidate_key in ("mame", "neogeo", "fbneo", "arcade"):
+            if candidate_key in systems_by_folder:
+                # If parent directory hints at neogeo or fbneo, prefer it
+                for part in rom_path.parts:
+                    if part.lower().strip() == candidate_key:
+                        return systems_by_folder[candidate_key]
+        if "mame" in systems_by_folder:
+            return systems_by_folder["mame"]
+        if "arcade" in systems_by_folder:
+            return systems_by_folder["arcade"]
+
+    # 5. From file extension directly
     ext = rom_path.suffix.lower()
     candidates = systems_by_ext.get(ext, [])
     if len(candidates) == 1:
         return candidates[0]
 
-    # 5. Ambiguous: take first candidate
+    # 6. Ambiguous: take first candidate
     if candidates:
         return candidates[0]
 

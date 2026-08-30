@@ -8,7 +8,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Nintendo Entertainment System",
         "esde_folder": "nes",
-        "extensions": ".nes,.unf,.unif,.zip,.7z",
+        "extensions": ".nes,.unf,.unif",
         "manufacturer": "Nintendo",
         "release_year": 1983,
         "screenscraper_id": 3,
@@ -17,7 +17,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Super Nintendo Entertainment System",
         "esde_folder": "snes",
-        "extensions": ".sfc,.smc,.snes,.bs,.fig,.swc,.zip,.7z",
+        "extensions": ".sfc,.smc,.snes,.bs,.fig,.swc",
         "manufacturer": "Nintendo",
         "release_year": 1990,
         "screenscraper_id": 4,
@@ -26,7 +26,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Nintendo 64",
         "esde_folder": "n64",
-        "extensions": ".n64,.v64,.z64,.zip,.7z",
+        "extensions": ".n64,.v64,.z64",
         "manufacturer": "Nintendo",
         "release_year": 1996,
         "screenscraper_id": 14,
@@ -35,7 +35,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Game Boy",
         "esde_folder": "gb",
-        "extensions": ".gb,.gbc,.zip,.7z",
+        "extensions": ".gb",
         "manufacturer": "Nintendo",
         "release_year": 1989,
         "screenscraper_id": 9,
@@ -44,7 +44,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Game Boy Color",
         "esde_folder": "gbc",
-        "extensions": ".gbc,.gb,.zip,.7z",
+        "extensions": ".gbc",
         "manufacturer": "Nintendo",
         "release_year": 1998,
         "screenscraper_id": 10,
@@ -53,7 +53,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Game Boy Advance",
         "esde_folder": "gba",
-        "extensions": ".gba,.zip,.7z",
+        "extensions": ".gba",
         "manufacturer": "Nintendo",
         "release_year": 2001,
         "screenscraper_id": 12,
@@ -62,7 +62,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Nintendo DS",
         "esde_folder": "nds",
-        "extensions": ".nds,.zip,.7z",
+        "extensions": ".nds",
         "manufacturer": "Nintendo",
         "release_year": 2004,
         "screenscraper_id": 15,
@@ -71,7 +71,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Nintendo 3DS",
         "esde_folder": "3ds",
-        "extensions": ".3ds,.3dsx,.cia,.cxi,.app,.zip,.7z",
+        "extensions": ".3ds,.3dsx,.cia,.cxi,.app",
         "manufacturer": "Nintendo",
         "release_year": 2011,
         "screenscraper_id": 17,
@@ -80,7 +80,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Nintendo Switch",
         "esde_folder": "switch",
-        "extensions": ".nsp,.xci,.nca,.nso,.nro,.zip,.7z",
+        "extensions": ".nsp,.xci,.nca,.nso,.nro",
         "manufacturer": "Nintendo",
         "release_year": 2017,
         "screenscraper_id": 225,
@@ -89,7 +89,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "GameCube",
         "esde_folder": "gc",
-        "extensions": ".gcm,.iso,.gcz,.chd,.rvz,.wia,.zip,.7z",
+        "extensions": ".gcm,.iso,.gcz,.chd,.rvz,.wia",
         "manufacturer": "Nintendo",
         "release_year": 2001,
         "screenscraper_id": 13,
@@ -98,7 +98,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Wii",
         "esde_folder": "wii",
-        "extensions": ".iso,.wbfs,.gcz,.chd,.rvz,.wia,.wad,.zip,.7z",
+        "extensions": ".iso,.wbfs,.gcz,.chd,.rvz,.wia,.wad",
         "manufacturer": "Nintendo",
         "release_year": 2006,
         "screenscraper_id": 16,
@@ -107,7 +107,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Wii U",
         "esde_folder": "wiiu",
-        "extensions": ".wud,.wux,.iso,.rpx,.zip,.7z",
+        "extensions": ".wud,.wux,.iso,.rpx",
         "manufacturer": "Nintendo",
         "release_year": 2012,
         "screenscraper_id": 18,
@@ -116,7 +116,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Virtual Boy",
         "esde_folder": "virtualboy",
-        "extensions": ".vb,.vboy,.zip,.7z",
+        "extensions": ".vb,.vboy",
         "manufacturer": "Nintendo",
         "release_year": 1995,
         "screenscraper_id": 11,
@@ -126,7 +126,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "PlayStation",
         "esde_folder": "psx",
-        "extensions": ".bin,.cue,.img,.iso,.pbp,.chd,.ecm,.mdf,.toc,.cbn,.m3u,.zip,.7z",
+        "extensions": ".bin,.cue,.img,.iso,.pbp,.chd,.ecm,.mdf,.toc,.cbn,.m3u",
         "manufacturer": "Sony",
         "release_year": 1994,
         "screenscraper_id": 57,
@@ -135,7 +135,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "PlayStation 2",
         "esde_folder": "ps2",
-        "extensions": ".iso,.img,.bin,.chd,.cso,.gz,.zip,.7z",
+        "extensions": ".iso,.img,.bin,.chd,.cso,.gz",
         "manufacturer": "Sony",
         "release_year": 2000,
         "screenscraper_id": 58,
@@ -153,7 +153,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "PlayStation Portable",
         "esde_folder": "psp",
-        "extensions": ".iso,.cso,.pbp,.elf,.prx,.chd,.zip,.7z",
+        "extensions": ".iso,.cso,.pbp,.elf,.prx,.chd",
         "manufacturer": "Sony",
         "release_year": 2004,
         "screenscraper_id": 61,
@@ -162,7 +162,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "PlayStation Vita",
         "esde_folder": "psvita",
-        "extensions": ".vpk,.chd,.zip,.7z",
+        "extensions": ".vpk,.chd",
         "manufacturer": "Sony",
         "release_year": 2011,
         "screenscraper_id": 62,
@@ -172,7 +172,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Sega Master System",
         "esde_folder": "mastersystem",
-        "extensions": ".sms,.bin,.zip,.7z",
+        "extensions": ".sms,.bin",
         "manufacturer": "Sega",
         "release_year": 1985,
         "screenscraper_id": 2,
@@ -181,7 +181,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Sega Mega Drive / Genesis",
         "esde_folder": "megadrive",
-        "extensions": ".md,.smd,.gen,.bin,.68k,.sgd,.zip,.7z",
+        "extensions": ".md,.smd,.gen,.bin,.68k,.sgd",
         "manufacturer": "Sega",
         "release_year": 1988,
         "screenscraper_id": 1,
@@ -190,7 +190,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Sega CD",
         "esde_folder": "segacd",
-        "extensions": ".bin,.cue,.iso,.chd,.zip,.7z",
+        "extensions": ".bin,.cue,.iso,.chd",
         "manufacturer": "Sega",
         "release_year": 1991,
         "screenscraper_id": 20,
@@ -199,7 +199,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Sega 32X",
         "esde_folder": "sega32x",
-        "extensions": ".32x,.bin,.zip,.7z",
+        "extensions": ".32x,.bin",
         "manufacturer": "Sega",
         "release_year": 1994,
         "screenscraper_id": 19,
@@ -208,7 +208,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Sega Saturn",
         "esde_folder": "saturn",
-        "extensions": ".bin,.cue,.iso,.chd,.mdf,.toc,.ccd,.zip,.7z",
+        "extensions": ".bin,.cue,.iso,.chd,.mdf,.toc,.ccd",
         "manufacturer": "Sega",
         "release_year": 1994,
         "screenscraper_id": 22,
@@ -217,7 +217,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Sega Dreamcast",
         "esde_folder": "dreamcast",
-        "extensions": ".chd,.gdi,.iso,.cdi,.cue,.bin,.zip,.7z",
+        "extensions": ".chd,.gdi,.iso,.cdi,.cue,.bin",
         "manufacturer": "Sega",
         "release_year": 1998,
         "screenscraper_id": 23,
@@ -226,17 +226,26 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Game Gear",
         "esde_folder": "gamegear",
-        "extensions": ".gg,.zip,.7z",
+        "extensions": ".gg",
         "manufacturer": "Sega",
         "release_year": 1990,
         "screenscraper_id": 21,
         "thegamesdb_id": 20,
     },
-    # ── Arcade ────────────────────────────────────────────────────────────────
+    # ── Arcade (Where the ZIP / 7z container IS the driver ROM set) ───────────
     {
         "name": "MAME",
         "esde_folder": "mame",
         "extensions": ".zip,.7z,.chd",
+        "manufacturer": "Various",
+        "release_year": None,
+        "screenscraper_id": 75,
+        "thegamesdb_id": 23,
+    },
+    {
+        "name": "Arcade",
+        "esde_folder": "arcade",
+        "extensions": ".zip,.7z",
         "manufacturer": "Various",
         "release_year": None,
         "screenscraper_id": 75,
@@ -264,7 +273,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Atari 2600",
         "esde_folder": "atari2600",
-        "extensions": ".a26,.bin,.zip,.7z",
+        "extensions": ".a26,.bin",
         "manufacturer": "Atari",
         "release_year": 1977,
         "screenscraper_id": 26,
@@ -273,7 +282,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Atari 5200",
         "esde_folder": "atari5200",
-        "extensions": ".a52,.bin,.car,.zip,.7z",
+        "extensions": ".a52,.bin,.car",
         "manufacturer": "Atari",
         "release_year": 1982,
         "screenscraper_id": 40,
@@ -282,7 +291,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Atari 7800",
         "esde_folder": "atari7800",
-        "extensions": ".a78,.bin,.zip,.7z",
+        "extensions": ".a78,.bin",
         "manufacturer": "Atari",
         "release_year": 1986,
         "screenscraper_id": 41,
@@ -291,7 +300,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Atari Lynx",
         "esde_folder": "atarilynx",
-        "extensions": ".lnx,.o,.zip,.7z",
+        "extensions": ".lnx,.o",
         "manufacturer": "Atari",
         "release_year": 1989,
         "screenscraper_id": 28,
@@ -300,7 +309,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Atari Jaguar",
         "esde_folder": "atarijaguar",
-        "extensions": ".j64,.jag,.zip,.7z",
+        "extensions": ".j64,.jag",
         "manufacturer": "Atari",
         "release_year": 1993,
         "screenscraper_id": 27,
@@ -310,7 +319,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Xbox",
         "esde_folder": "xbox",
-        "extensions": ".iso,.xbe,.zip,.7z",
+        "extensions": ".iso,.xbe",
         "manufacturer": "Microsoft",
         "release_year": 2001,
         "screenscraper_id": 32,
@@ -319,7 +328,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Xbox 360",
         "esde_folder": "xbox360",
-        "extensions": ".iso,.xex,.god,.zip,.7z",
+        "extensions": ".iso,.xex,.god",
         "manufacturer": "Microsoft",
         "release_year": 2005,
         "screenscraper_id": 33,
@@ -329,7 +338,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "PC Engine / TurboGrafx-16",
         "esde_folder": "pcengine",
-        "extensions": ".pce,.bin,.zip,.7z",
+        "extensions": ".pce,.bin",
         "manufacturer": "NEC",
         "release_year": 1987,
         "screenscraper_id": 31,
@@ -338,17 +347,17 @@ SYSTEMS_REGISTRY = [
     {
         "name": "PC Engine CD",
         "esde_folder": "pcenginecd",
-        "extensions": ".bin,.cue,.iso,.chd,.zip,.7z",
+        "extensions": ".bin,.cue,.iso,.chd",
         "manufacturer": "NEC",
         "release_year": 1988,
         "screenscraper_id": 114,
         "thegamesdb_id": 4955,
     },
-    # ── SNK ───────────────────────────────────────────────────────────────────
+    # ── SNK Handhelds ─────────────────────────────────────────────────────────
     {
         "name": "Neo Geo Pocket",
         "esde_folder": "ngp",
-        "extensions": ".ngp,.ngc,.zip,.7z",
+        "extensions": ".ngp,.ngc",
         "manufacturer": "SNK",
         "release_year": 1998,
         "screenscraper_id": 25,
@@ -357,7 +366,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Neo Geo Pocket Color",
         "esde_folder": "ngpc",
-        "extensions": ".ngc,.ngp,.zip,.7z",
+        "extensions": ".ngc,.ngp",
         "manufacturer": "SNK",
         "release_year": 1999,
         "screenscraper_id": 82,
@@ -367,7 +376,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "WonderSwan",
         "esde_folder": "wonderswan",
-        "extensions": ".ws,.zip,.7z",
+        "extensions": ".ws",
         "manufacturer": "Bandai",
         "release_year": 1999,
         "screenscraper_id": 45,
@@ -376,7 +385,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "WonderSwan Color",
         "esde_folder": "wonderswancolor",
-        "extensions": ".wsc,.ws,.zip,.7z",
+        "extensions": ".wsc,.ws",
         "manufacturer": "Bandai",
         "release_year": 2000,
         "screenscraper_id": 46,
@@ -386,7 +395,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "DOS",
         "esde_folder": "dos",
-        "extensions": ".bat,.com,.exe,.zip,.7z",
+        "extensions": ".bat,.com,.exe",
         "manufacturer": "Microsoft",
         "release_year": None,
         "screenscraper_id": 135,
