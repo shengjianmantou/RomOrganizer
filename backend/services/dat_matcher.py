@@ -88,7 +88,12 @@ def _load_xml_dat(dat_path: Path) -> int:
             header_hex = (rom.get("header") or "").replace(" ", "")
             size = int(rom.get("size", 0))
 
-            hdr_bytes = bytes.fromhex(header_hex) if header_hex else None
+            hdr_bytes = None
+            if header_hex and len(header_hex) == 32:
+                try:
+                    hdr_bytes = bytes.fromhex(header_hex)
+                except ValueError:
+                    hdr_bytes = None
 
             entry = DatEntry(
                 name=game_name,
@@ -269,22 +274,24 @@ def lookup(
                         if test_crc == cand.crc32:
                             return cand
 
-        # Tier 4: Hardware cartridge serial header (NGPC, GBA, NDS, N64)
+        # Tier 4: Hardware cartridge serial header (NGPC)
         if hashes.raw_data is not None and len(hashes.raw_data) >= 0x30:
             data = hashes.raw_data
-            # NGPC serial check at offset 0x20..0x22
-            ngpc_serial = f"{data[0x21]:02x}{data[0x20]:02x}"
-            if ngpc_serial in _SERIAL_INDEX:
-                return _SERIAL_INDEX[ngpc_serial]
+            is_ngpc = data[:0x10].startswith(b"COPYRIGHT BY SNK") or data[:0x10].startswith(b"LICENSED BY SNK")
+            if is_ngpc:
+                # NGPC serial check at offset 0x20..0x22
+                ngpc_serial = f"{data[0x21]:02x}{data[0x20]:02x}"
+                if ngpc_serial in _SERIAL_INDEX:
+                    return _SERIAL_INDEX[ngpc_serial]
 
-            # Tier 5: Hardware Cartridge Title string (NGPC, N64, GBA)
-            raw_title = data[0x24:0x30].decode("ascii", errors="ignore").rstrip("\x00").strip()
-            NGPC_TITLES = {
-                "RB_F_CONTACT": "Fatal Fury - First Contact - Pocket Fighting Series (World) (En,Ja)",
-                "OEKAKIENGLSH": "Picture Puzzle (Europe)",
-            }
-            if raw_title in NGPC_TITLES and NGPC_TITLES[raw_title] in _NAME_INDEX:
-                return _NAME_INDEX[NGPC_TITLES[raw_title]]
+                # Tier 5: Hardware Cartridge Title string (NGPC)
+                raw_title = data[0x24:0x30].decode("ascii", errors="ignore").rstrip("\x00").strip()
+                NGPC_TITLES = {
+                    "RB_F_CONTACT": "Fatal Fury - First Contact - Pocket Fighting Series (World) (En,Ja)",
+                    "OEKAKIENGLSH": "Picture Puzzle (Europe)",
+                }
+                if raw_title in NGPC_TITLES and NGPC_TITLES[raw_title] in _NAME_INDEX:
+                    return _NAME_INDEX[NGPC_TITLES[raw_title]]
 
     return None
 
