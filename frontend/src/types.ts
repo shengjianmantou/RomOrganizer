@@ -29,6 +29,7 @@ export interface Game {
   description?: string
   cover_art_path?: string
   screenshot_path?: string
+  no_intro_name?: string
   rating?: number
   players?: number
   rom_files: RomFile[]

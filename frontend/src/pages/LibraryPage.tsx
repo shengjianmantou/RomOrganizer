@@ -12,6 +12,7 @@ import GameTable from '../components/GameTable'
 import FilterSidebar from '../components/FilterSidebar'
 import ExportPanel from '../components/ExportPanel'
 import ProgressToast from '../components/ProgressToast'
+import GameDetailModal from '../components/GameDetailModal'
 
 const DEFAULT_FILTERS: LibraryFilters = {
   search: '',
@@ -34,6 +35,7 @@ export default function LibraryPage() {
   const [importDirs, setImportDirs] = useState('')
   const [importJobId, setImportJobId] = useState<number | null>(null)
   const [exportJobId, setExportJobId] = useState<number | null>(null)
+  const [inspectedGame, setInspectedGame] = useState<Game | null>(null)
   const [searchInput, setSearchInput] = useState('')
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -203,7 +205,12 @@ export default function LibraryPage() {
           ) : games.length === 0 ? (
             <EmptyState />
           ) : viewMode === 'grid' ? (
-            <GameGrid games={games} selectedIds={selectedIds} onSelectionChange={setSelectedIds} />
+            <GameGrid
+              games={games}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              onInspect={setInspectedGame}
+            />
           ) : (
             <GameTable
               games={games}
@@ -212,6 +219,7 @@ export default function LibraryPage() {
               onSortChange={(col, dir) => handleFiltersChange({ sort_by: col, sort_dir: dir })}
               sortBy={filters.sort_by}
               sortDir={filters.sort_dir}
+              onInspect={setInspectedGame}
             />
           )}
         </div>
@@ -239,6 +247,14 @@ export default function LibraryPage() {
           </div>
         )}
       </div>
+
+      {/* Game Details Inspector Modal */}
+      {inspectedGame && (
+        <GameDetailModal
+          game={inspectedGame}
+          onClose={() => setInspectedGame(null)}
+        />
+      )}
 
       {/* Export panel */}
       {showExport && (

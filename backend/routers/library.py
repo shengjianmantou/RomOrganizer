@@ -46,6 +46,7 @@ class GameOut(BaseModel):
     description: Optional[str] = None
     cover_art_path: Optional[str] = None
     screenshot_path: Optional[str] = None
+    no_intro_name: Optional[str] = None
     rating: Optional[float] = None
     players: Optional[int] = None
     rom_files: list[RomFileOut] = []
@@ -140,6 +141,7 @@ def list_games(
             description=game.description,
             cover_art_path=game.cover_art_path,
             screenshot_path=game.screenshot_path,
+            no_intro_name=game.no_intro_name,
             rating=game.rating,
             players=game.players,
             rom_files=[RomFileOut.model_validate(rf) for rf in game.rom_files],
