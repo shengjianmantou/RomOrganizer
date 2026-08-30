@@ -353,21 +353,33 @@ def _resolve_system(
     # 1. From DAT entry system name
     if dat_entry and dat_entry.system_name:
         for s in systems_by_folder.values():
-            if s.name.lower() in dat_entry.system_name.lower():
+            if s.name.lower() in dat_entry.system_name.lower() or s.esde_folder in dat_entry.system_name.lower():
                 return s
 
-    # 2. From parent directory matching an ES-DE folder
-    inferred = scanner.infer_system_from_directory(rom_path.relative_to(src_dir), esde_folders)
+    # 2. From parent directory / path parts matching an ES-DE folder
+    inferred = scanner.infer_system_from_directory(rom_path, esde_folders)
     if inferred and inferred in systems_by_folder:
         return systems_by_folder[inferred]
 
-    # 3. From file extension
+    # 3. If archive (.zip, .7z, .rar): inspect extension of ROM file inside archive
+    internal_ext = scanner.detect_internal_extension(rom_path)
+    if internal_ext and internal_ext in systems_by_ext:
+        candidates = systems_by_ext[internal_ext]
+        if len(candidates) == 1:
+            return candidates[0]
+        # If multiple (e.g. ngp vs ngpc), prefer ngpc or inferred
+        for c in candidates:
+            if c.esde_folder == "ngpc":
+                return c
+        return candidates[0]
+
+    # 4. From file extension directly
     ext = rom_path.suffix.lower()
     candidates = systems_by_ext.get(ext, [])
     if len(candidates) == 1:
         return candidates[0]
 
-    # 4. Ambiguous: take first candidate (best guess)
+    # 5. Ambiguous: take first candidate
     if candidates:
         return candidates[0]
 
