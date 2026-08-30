@@ -350,9 +350,18 @@ def _resolve_system(
     esde_folders: set[str],
 ) -> System | None:
     import re
-    # 1. From DAT entry system name (longest match first to prevent prefix clashes like Neo Geo vs Neo Geo Pocket Color)
+    # 1. From DAT entry system name
     if dat_entry and dat_entry.system_name:
         dat_norm = re.sub(r"[^a-z0-9]", "", dat_entry.system_name.lower())
+        d_tokens = set(re.findall(r"[a-z0-9]+", dat_entry.system_name.lower()))
+        
+        # Pass 1: exact normalized name match
+        for s in systems_by_folder.values():
+            s_name_norm = re.sub(r"[^a-z0-9]", "", s.name.lower())
+            if s_name_norm == dat_norm:
+                return s
+
+        # Pass 2: system name contained in DAT name (longest name first e.g. Game Boy Color before Game Boy)
         sorted_systems = sorted(
             systems_by_folder.values(),
             key=lambda s: len(re.sub(r"[^a-z0-9]", "", s.name)),
@@ -360,8 +369,12 @@ def _resolve_system(
         )
         for s in sorted_systems:
             s_name_norm = re.sub(r"[^a-z0-9]", "", s.name.lower())
-            s_folder_norm = re.sub(r"[^a-z0-9]", "", s.esde_folder.lower())
-            if s_name_norm in dat_norm or s_folder_norm in dat_norm:
+            if s_name_norm in dat_norm:
+                return s
+
+        # Pass 3: exact folder name matching a distinct word token in DAT header
+        for s in systems_by_folder.values():
+            if s.esde_folder.lower() in d_tokens:
                 return s
 
     # 2. From parent directory / path parts matching an ES-DE folder
