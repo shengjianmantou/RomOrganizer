@@ -103,9 +103,8 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
                 const count = filterOptions?.system_counts
                   ? (filterOptions.system_counts[sys.id] ?? (filterOptions.system_counts as Record<string, number>)[String(sys.id)] ?? 0)
                   : 0
-                const hasSystemCounts = filterOptions?.system_counts !== undefined && Object.keys(filterOptions.system_counts).length > 0
                 const isSelected = filters.system_ids.includes(sys.id)
-                const isAvailable = !hasSystemCounts || count > 0 || isSelected
+                const isAvailable = count > 0 || isSelected
 
                 return (
                   <label
@@ -150,7 +149,9 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
           <div className="flex flex-wrap gap-1.5">
             {['En', 'Zh', 'Ja', 'Fr', 'De', 'Es', 'It', 'Pt', 'Ko', 'Ru'].map(lang => {
               const isSelected = filters.languages.includes(lang)
-              const isAvailable = !filterOptions?.available_languages || filterOptions.available_languages.includes(lang) || isSelected
+              const isAvailable = filterOptions?.available_languages && filterOptions.available_languages.length > 0
+                ? (filterOptions.available_languages.includes(lang) || isSelected)
+                : isSelected
 
               return (
                 <button
@@ -184,7 +185,9 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
             <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
               {filterOptions.regions.map(region => {
                 const isSelected = filters.regions.includes(region)
-                const isAvailable = !filterOptions.available_regions || filterOptions.available_regions.includes(region) || isSelected
+                const isAvailable = filterOptions?.available_regions && filterOptions.available_regions.length > 0
+                  ? (filterOptions.available_regions.includes(region) || isSelected)
+                  : isSelected
 
                 return (
                   <label
@@ -224,7 +227,9 @@ export default function FilterSidebar({ systems, filterOptions, filters, onChang
             <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
               {filterOptions.genres.map(genre => {
                 const isSelected = filters.genres.includes(genre)
-                const isAvailable = !filterOptions.available_genres || filterOptions.available_genres.includes(genre) || isSelected
+                const isAvailable = filterOptions?.available_genres && filterOptions.available_genres.length > 0
+                  ? (filterOptions.available_genres.includes(genre) || isSelected)
+                  : isSelected
 
                 return (
                   <label

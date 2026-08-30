@@ -33,6 +33,7 @@ class DatEntry:
 _CRC_INDEX: dict[str, DatEntry] = {}
 _MD5_INDEX: dict[str, DatEntry] = {}
 _SHA1_INDEX: dict[str, DatEntry] = {}
+_SERIAL_INDEX: dict[str, DatEntry] = {}
 
 # NES Headered DAT index: (prg_rom_size, prg_16k_count, chr_8k_count) -> list[DatEntry]
 _NES_HEADERED_INDEX: dict[tuple[int, int, int], list[DatEntry]] = {}
@@ -82,6 +83,7 @@ def _load_xml_dat(dat_path: Path) -> int:
             crc = (rom.get("crc") or "").lower().zfill(8) or None
             md5 = (rom.get("md5") or "").lower() or None
             sha1 = (rom.get("sha1") or "").lower() or None
+            serial = (rom.get("serial") or "").strip().lower()
             header_hex = (rom.get("header") or "").replace(" ", "")
             size = int(rom.get("size", 0))
 
@@ -104,6 +106,8 @@ def _load_xml_dat(dat_path: Path) -> int:
                 _MD5_INDEX[md5] = entry
             if sha1:
                 _SHA1_INDEX[sha1] = entry
+            if serial:
+                _SERIAL_INDEX[serial.zfill(4)] = entry
 
             # If this is an NES Headered DAT entry
             if hdr_bytes and len(hdr_bytes) == 16 and size > 16:
@@ -261,6 +265,14 @@ def lookup(
                         test_crc = f"{binascii.crc32(test_file) & 0xFFFFFFFF:08x}"
                         if test_crc == cand.crc32:
                             return cand
+
+        # Tier 4: Hardware cartridge serial header (NGPC, GBA, NDS, N64)
+        if hashes.raw_data is not None and len(hashes.raw_data) >= 0x30:
+            data = hashes.raw_data
+            # NGPC serial check at offset 0x20..0x22
+            ngpc_serial = f"{data[0x21]:02x}{data[0x20]:02x}"
+            if ngpc_serial in _SERIAL_INDEX:
+                return _SERIAL_INDEX[ngpc_serial]
 
     return None
 

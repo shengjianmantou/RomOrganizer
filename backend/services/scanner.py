@@ -40,12 +40,92 @@ async def scan_directory(source_dir: Path) -> AsyncIterator[Path]:
         yield f
 
 
+def expand_container_archive(path: Path) -> list[Path]:
+    """
+    Check if an archive is a multi-archive container (e.g. GoodMerge RAR/ZIP
+    containing individual game .7z/.zip files). If so, extract sub-archives
+    to a cache folder and return the list of extracted game archives.
+    """
+    ext = path.suffix.lower()
+    if ext not in ARCHIVE_EXTENSIONS:
+        return [path]
+
+    from backend.config import settings
+    cache_base = settings.library_dir / "cache" / "extracted_sets"
+
+    sub_archives: list[str] = []
+    try:
+        if ext == ".rar":
+            import rarfile
+            with rarfile.RarFile(path, "r") as rf:
+                for info in rf.infolist():
+                    if not info.isdir() and Path(info.filename).suffix.lower() in ARCHIVE_EXTENSIONS:
+                        sub_archives.append(info.filename)
+                if len(sub_archives) > 1:
+                    target_dir = cache_base / path.stem
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    out_paths = []
+                    for info in rf.infolist():
+                        if info.isdir():
+                            continue
+                        sub_file = target_dir / Path(info.filename).name
+                        if not sub_file.exists() or sub_file.stat().st_size != info.file_size:
+                            try:
+                                data = rf.read(info)
+                                sub_file.write_bytes(data)
+                            except Exception:
+                                pass
+                        if sub_file.exists() and is_rom_file(sub_file):
+                            out_paths.append(sub_file)
+                    return sorted(out_paths)
+        elif ext == ".zip":
+            import zipfile
+            with zipfile.ZipFile(path, "r") as zf:
+                for n in zf.namelist():
+                    if not n.endswith("/") and Path(n).suffix.lower() in ARCHIVE_EXTENSIONS:
+                        sub_archives.append(n)
+                if len(sub_archives) > 1:
+                    target_dir = cache_base / path.stem
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    out_paths = []
+                    for n in zf.namelist():
+                        if n.endswith("/"):
+                            continue
+                        sub_file = target_dir / Path(n).name
+                        if not sub_file.exists():
+                            try:
+                                data = zf.read(n)
+                                sub_file.write_bytes(data)
+                            except Exception:
+                                pass
+                        if sub_file.exists() and is_rom_file(sub_file):
+                            out_paths.append(sub_file)
+                    return sorted(out_paths)
+        elif ext == ".7z":
+            import py7zr
+            with py7zr.SevenZipFile(path, "r") as szf:
+                for n in szf.getnames():
+                    if Path(n).suffix.lower() in ARCHIVE_EXTENSIONS:
+                        sub_archives.append(n)
+                if len(sub_archives) > 1:
+                    target_dir = cache_base / path.stem
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    szf.extractall(target_dir)
+                    return sorted(p for p in target_dir.rglob("*.*") if p.is_file() and is_rom_file(p))
+    except Exception as e:
+        log.warning(f"Error expanding container archive {path}: {e}")
+
+    return [path]
+
+
 def _collect_files(source_dir: Path) -> list[Path]:
     results = []
     try:
         for path in sorted(source_dir.rglob("*")):
             if path.is_file() and is_rom_file(path):
-                results.append(path)
+                # Expand container archives (GoodMerge sets, multi-game archives)
+                expanded = expand_container_archive(path)
+                results.extend(expanded)
     except PermissionError as e:
         log.warning(f"Permission denied scanning {source_dir}: {e}")
     return results

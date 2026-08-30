@@ -54,6 +54,34 @@ def _is_rom_file(name: str) -> bool:
     return Path(name).suffix.lower() in ROM_EXTENSIONS
 
 
+def _pick_best_rom_candidate(names: list[str]) -> str | None:
+    """Pick the best ROM file among candidates (prefers [!], (USA), (World), (Europe))."""
+    if not names:
+        return None
+    if len(names) == 1:
+        return names[0]
+
+    # Preference score: lower = better
+    def score(name: str) -> tuple[int, int, int, str]:
+        n = name.lower()
+        verified = 0 if "[!]" in name else 1
+        region_score = 10
+        if "(u)" in n or "(usa)" in n:
+            region_score = 1
+        elif "(w)" in n or "(world)" in n:
+            region_score = 2
+        elif "(e)" in n or "(europe)" in n:
+            region_score = 3
+        elif "(j)" in n or "(japan)" in n:
+            region_score = 4
+        
+        # Penalize bad dumps, hacks, overdumps
+        penalty = 1 if any(t in n for t in ["[b", "[h", "[o", "[t", "[a", "beta", "proto"]) else 0
+        return (penalty, verified, region_score, name)
+
+    return min(names, key=score)
+
+
 def compute_hashes_from_data(data: bytes) -> RomHashes:
     """Compute full and headerless hashes from raw ROM bytes."""
     full_crc = binascii.crc32(data) & 0xFFFFFFFF
@@ -102,6 +130,22 @@ def compute_hashes_from_data(data: bytes) -> RomHashes:
         headerless_sha1 = hashlib.sha1(hl_data).hexdigest()
         headerless_size = len(hl_data)
 
+    # 4. N64 byte-swapped (.v64) or little-endian (.n64) -> normalize to big-endian (.z64)
+    elif len(data) >= 4 and data[:4] in (b"\x37\x80\x40\x12", b"\x40\x12\x37\x80"):
+        if data[:4] == b"\x37\x80\x40\x12":  # .v64 (byteswapped 16-bit)
+            ba = bytearray(data)
+            ba[0::2], ba[1::2] = data[1::2], data[0::2]
+            norm_data = bytes(ba)
+        else:  # .n64 (little-endian 32-bit)
+            ba = bytearray(data)
+            ba[0::4], ba[1::4], ba[2::4], ba[3::4] = data[3::4], data[2::4], data[1::4], data[0::4]
+            norm_data = bytes(ba)
+        hl_crc = binascii.crc32(norm_data) & 0xFFFFFFFF
+        headerless_crc = f"{hl_crc:08x}"
+        headerless_md5 = hashlib.md5(norm_data).hexdigest()
+        headerless_sha1 = hashlib.sha1(norm_data).hexdigest()
+        headerless_size = len(norm_data)
+
     return RomHashes(
         crc32=f"{full_crc:08x}",
         md5=full_md5,
@@ -138,42 +182,25 @@ def compute_hashes(path: Path) -> RomHashes:
 
 def _hash_plain(path: Path) -> RomHashes:
     file_size = path.stat().st_size
-    # Read entire file if under 64MB
     if file_size <= (64 << 20):
-        data = path.read_bytes()
-        return compute_hashes_from_data(data)
-    else:
-        # Stream hashing for very large disc images
-        with open(path, "rb") as f:
-            header_sample = f.read(16)
-            f.seek(0)
-            crc = 0
-            md5 = hashlib.md5()
-            sha1 = hashlib.sha1()
-            total = 0
-            while True:
-                chunk = f.read(1 << 20)
-                if not chunk:
-                    break
-                crc = binascii.crc32(chunk, crc) & 0xFFFFFFFF
-                md5.update(chunk)
-                sha1.update(chunk)
-                total += len(chunk)
-            return RomHashes(
-                crc32=f"{crc:08x}",
-                md5=md5.hexdigest(),
-                sha1=sha1.hexdigest(),
-                file_size=total,
-            )
+        try:
+            with open(path, "rb") as f:
+                data = f.read()
+            return compute_hashes_from_data(data)
+        except Exception:
+            pass
+
+    with open(path, "rb") as f:
+        return _stream_hash_entry(f)
 
 
 def _hash_zip(path: Path) -> RomHashes:
-    """Extract and hash the first ROM file found inside a ZIP."""
+    """Extract and hash the best ROM file found inside a ZIP."""
     try:
         with zipfile.ZipFile(path, "r") as zf:
             names = zf.namelist()
             rom_names = [n for n in names if _is_rom_file(n) and not n.endswith("/")]
-            target = rom_names[0] if rom_names else (names[0] if names else None)
+            target = _pick_best_rom_candidate(rom_names) if rom_names else (names[0] if names else None)
             if target is None:
                 return _hash_plain(path)
             
@@ -189,35 +216,44 @@ def _hash_zip(path: Path) -> RomHashes:
 
 
 def _hash_7z(path: Path) -> RomHashes:
-    """Extract and hash the first ROM file found inside a 7z archive."""
+    """Extract and hash the best ROM file found inside a 7z archive."""
+    import tempfile
     try:
         import py7zr
         with py7zr.SevenZipFile(path, mode="r") as szf:
             names = szf.getnames()
             rom_names = [n for n in names if _is_rom_file(n)]
-            target = rom_names[0] if rom_names else (names[0] if names else None)
+            target = _pick_best_rom_candidate(rom_names) if rom_names else (names[0] if names else None)
             if target is None:
                 return _hash_plain(path)
-            all_data = szf.read([target])
-            data = all_data[target].read()
-            return compute_hashes_from_data(data)
+            
+            with tempfile.TemporaryDirectory() as tmpdir:
+                szf.extract(path=tmpdir, targets=[target])
+                out_file = Path(tmpdir) / target
+                if out_file.exists():
+                    return _hash_plain(out_file)
+        return _hash_plain(path)
     except Exception:
         return _hash_plain(path)
 
 
 def _hash_rar(path: Path) -> RomHashes:
-    """Extract and hash the first ROM file found inside a RAR archive."""
+    """Extract and hash the best ROM file found inside a RAR archive."""
+    import tempfile
     try:
         import rarfile
         with rarfile.RarFile(path, "r") as rf:
             names = [i.filename for i in rf.infolist() if not i.is_dir()]
             rom_names = [n for n in names if _is_rom_file(n)]
-            target = rom_names[0] if rom_names else (names[0] if names else None)
+            target = _pick_best_rom_candidate(rom_names) if rom_names else (names[0] if names else None)
             if target is None:
                 return _hash_plain(path)
-            with rf.open(target) as entry:
-                data = entry.read()
-                return compute_hashes_from_data(data)
+            with tempfile.TemporaryDirectory() as tmpdir:
+                rf.extract(target, tmpdir)
+                out_file = Path(tmpdir) / target
+                if out_file.exists():
+                    return _hash_plain(out_file)
+        return _hash_plain(path)
     except Exception:
         return _hash_plain(path)
 
