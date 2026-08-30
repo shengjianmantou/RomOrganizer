@@ -115,6 +115,9 @@ async def start_export(job_id: int) -> None:
         else:
             to_export = games_data
 
+        if only_preferred_languages:
+            to_export = [item for item in to_export if _is_preferred_language(item[0], lang_priority)]
+
         # Gamelist data per system
         gamelists: dict[str, list[dict]] = {}
 
@@ -227,25 +230,37 @@ def _normalize_title(title: str) -> str:
     return t or title.lower().strip()
 
 
-def _is_preferred_language(game: Game, lang_priority: list[str]) -> bool:
-    """Check if game matches any preferred language or region."""
+_PREFERRED_LANG_CODES = {"en", "eng", "zh", "zhs", "zht"}
+_PREFERRED_REGIONS = {"usa", "us", "world", "europe", "eur", "uk", "australia", "canada", "china", "taiwan", "hong kong"}
+
+
+def _is_preferred_language(game: Game, lang_priority: list[str] | None = None) -> bool:
+    """
+    Check if game is an English, World, Europe, or Chinese release.
+    Excludes standalone foreign games (e.g. Japanese-only, German-only, French-only).
+    """
     t_lower = game.title.lower()
     r_lower = (game.region or "").lower()
-    langs = [l.strip().lower() for l in (game.languages or "").split(",") if l.strip()]
+    langs = {l.strip().lower() for l in (game.languages or "").split(",") if l.strip()}
 
-    # If game has English, USA, World, Europe, or Chinese
-    if any(k in r_lower for k in ["usa", "us", "world", "europe", "uk", "china", "taiwan", "hong kong"]):
-        return True
-    if any(k in t_lower for k in ["(usa)", "(u)", "(world)", "(w)", "(europe)", "(e)", "(eur)", "(china)", "(taiwan)", "[zh]"]):
-        return True
-    if any(l in ["en", "eng", "zh", "zhs", "zht"] for l in langs):
+    # 1. Explicit English or Chinese language code
+    if langs & _PREFERRED_LANG_CODES:
         return True
 
-    # Check against user-provided priority list
-    for p in lang_priority:
-        p_lower = p.lower()
-        if p_lower in langs or p_lower in r_lower:
+    # 2. Preferred region (USA, World, Europe, UK, Australia, Canada, China, Taiwan, Hong Kong)
+    r_parts = {p.strip() for p in r_lower.split(",")}
+    if r_parts & _PREFERRED_REGIONS:
+        return True
+    for pr in _PREFERRED_REGIONS:
+        if pr in r_lower:
             return True
+
+    # 3. Preferred region/language tag in title
+    tags = re.findall(r"[\(\[](.*?)[\)\]]", t_lower)
+    for tag in tags:
+        for p in [p.strip() for p in tag.split(",")]:
+            if p in ["usa", "u", "ju", "world", "w", "europe", "e", "eur", "uk", "china", "taiwan", "hong kong", "zh", "zhs", "zht", "en", "eng"]:
+                return True
 
     return False
 

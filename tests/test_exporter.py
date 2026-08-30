@@ -23,8 +23,16 @@ def test_pick_best_version_usa_over_europe():
     assert best[0] == g_usa
 
 def test_is_preferred_language():
-    g1 = MagicMock(title="Super Mario (USA)", region="USA", languages="En")
-    g2 = MagicMock(title="Game (Japan)", region="Japan", languages="Ja")
-    
-    assert _is_preferred_language(g1, ["En", "Zh"]) is True
-    assert _is_preferred_language(g2, ["En", "Zh"]) is False
+    g_usa = MagicMock(title="Super Mario (USA)", region="USA", languages="En")
+    g_jp = MagicMock(title="Dragon Ball (Japan)", region="Japan", languages="Ja")
+    g_world = MagicMock(title="Game (World)", region="World", languages="En")
+    g_eu = MagicMock(title="Castlevania (Europe)", region="Europe", languages="En")
+    g_zh = MagicMock(title="Three Kingdoms (China)", region="China", languages="Zh")
+    g_jp_usa = MagicMock(title="Dr. Mario (Japan, USA)", region="Japan, USA", languages="En,Ja")
+
+    assert _is_preferred_language(g_usa) is True
+    assert _is_preferred_language(g_world) is True
+    assert _is_preferred_language(g_eu) is True
+    assert _is_preferred_language(g_zh) is True
+    assert _is_preferred_language(g_jp_usa) is True
+    assert _is_preferred_language(g_jp) is False
