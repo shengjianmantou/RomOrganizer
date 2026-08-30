@@ -169,6 +169,12 @@ class ParsedRomName:
         return len(priority)
 
 
+_ROM_EXT_RE = re.compile(
+    r"(\.(smc|sfc|snes|fig|swc|nes|unf|unif|z64|n64|v64|gba|gbc|gb|nds|3ds|md|smd|gen|bin|sms|gg|ngp|ngc|pce|cue|iso|chd|zip|7z|rar))+$",
+    re.IGNORECASE,
+)
+
+
 def parse_rom_filename(filename: str) -> ParsedRomName:
     """
     Parse a ROM filename (without directory, with or without extension)
@@ -176,8 +182,10 @@ def parse_rom_filename(filename: str) -> ParsedRomName:
 
     Supports No-Intro, Redump, and TOSEC-style naming conventions.
     """
-    # Strip extension
-    stem = re.sub(r"\.[^.]+$", "", filename)
+    # Strip extensions (including chained like .smc.zip)
+    stem = _ROM_EXT_RE.sub("", filename)
+    if stem == filename and "." in filename:
+        stem = re.sub(r"\.[^.]+$", "", filename)
 
     result = ParsedRomName()
     paren_tags: list[str] = _PAREN_TAG_RE.findall(stem)
@@ -189,6 +197,7 @@ def parse_rom_filename(filename: str) -> ParsedRomName:
         (stem.find("[") if "[" in stem else len(stem)),
     )
     raw_title = stem[:title_end].strip().rstrip(",-_ ").strip()
+    raw_title = _ROM_EXT_RE.sub("", raw_title).strip()
     # Normalize underscores to spaces if filename uses snake_case
     cleaned = re.sub(r"[_\s]+", " ", raw_title).strip()
     result.clean_title = cleaned or stem[:title_end].strip()

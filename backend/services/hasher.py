@@ -34,7 +34,7 @@ class RomHashes:
 
 
 ROM_EXTENSIONS = {
-    ".nes", ".unf", ".unif", ".sfc", ".smc", ".bs", ".fig", ".swc",
+    ".nes", ".unf", ".unif", ".sfc", ".smc", ".snes", ".bs", ".fig", ".swc",
     ".n64", ".z64", ".v64", ".gba", ".gbc", ".gb",
     ".nds", ".3ds", ".cia", ".nsp", ".xci",
     ".iso", ".bin", ".cue", ".chd", ".img", ".mdf",

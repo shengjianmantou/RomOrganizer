@@ -17,7 +17,7 @@ SYSTEMS_REGISTRY = [
     {
         "name": "Super Nintendo Entertainment System",
         "esde_folder": "snes",
-        "extensions": ".sfc,.smc,.bs,.fig,.swc,.zip,.7z",
+        "extensions": ".sfc,.smc,.snes,.bs,.fig,.swc,.zip,.7z",
         "manufacturer": "Nintendo",
         "release_year": 1990,
         "screenscraper_id": 4,

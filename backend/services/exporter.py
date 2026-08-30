@@ -207,25 +207,31 @@ from backend.services.hasher import ROM_EXTENSIONS, _pick_best_rom_candidate
 
 def _sanitize_filename(name: str) -> str:
     """Sanitize title for filesystem usage."""
-    s = re.sub(r'[\/\\:\*\?"<>\|]', '_', name).strip()
-    return s or "game"
+_ROM_EXT_PATTERN = re.compile(
+    r"(\.(smc|sfc|snes|fig|swc|nes|unf|unif|z64|n64|v64|gba|gbc|gb|nds|3ds|md|smd|gen|bin|sms|gg|ngp|ngc|pce|cue|iso|chd|zip|7z|rar))+$",
+    re.IGNORECASE,
+)
 
 
 def _normalize_title(title: str) -> str:
     """
     Normalize title for 1G1R deduplication.
-    Strips all parentheses (tags), brackets, revisions, versions, leading articles,
-    and non-alphanumeric punctuation so variants like 'Dr. Mario (Europe)' and
-    'Dr. Mario (Japan, USA)' produce the exact same key 'drmario'.
+    Strips all parentheses (tags), brackets, revisions, versions, trailing extensions (.smc, .sfc, .snes, .zip),
+    leading articles, and non-alphanumeric punctuation so variants like 'Super Mario World.smc',
+    'Super Mario World.sfc', 'Super Mario World (USA).snes' produce the exact same key 'supermarioworld'.
     """
-    # Strip (tag) and [tag]
-    t = re.sub(r"\s*[\(\[].*?[\)\]]", "", title)
+    # 1. Strip trailing extensions before tags
+    t = _ROM_EXT_PATTERN.sub("", title.strip())
+    # 2. Strip (tag) and [tag]
+    t = re.sub(r"\s*[\(\[].*?[\)\]]", "", t)
+    # 3. Strip trailing extensions after tags if any
+    t = _ROM_EXT_PATTERN.sub("", t.strip())
     t = t.lower().strip()
-    # Strip leading articles
+    # 4. Strip leading articles
     for article in ("the ", "a ", "an "):
         if t.startswith(article):
             t = t[len(article):]
-    # Remove all non-alphanumeric characters
+    # 5. Remove all non-alphanumeric characters
     t = re.sub(r"[^a-z0-9]", "", t)
     return t or title.lower().strip()
 

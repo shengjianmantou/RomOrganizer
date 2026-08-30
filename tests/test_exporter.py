@@ -9,6 +9,13 @@ def test_normalize_title_1g1r():
     assert _normalize_title("dr_mario_(ju)") == "drmario"
     assert _normalize_title("The Legend of Zelda (USA) (Rev 1)") == "legendofzelda"
     assert _normalize_title("Super Mario Bros. (World)") == "supermariobros"
+    # SNES extensions deduplication (.smc, .sfc, .snes, .zip)
+    assert _normalize_title("Super Mario World.smc") == "supermarioworld"
+    assert _normalize_title("Super Mario World.sfc") == "supermarioworld"
+    assert _normalize_title("Super Mario World.snes") == "supermarioworld"
+    assert _normalize_title("Super Mario World (USA).smc") == "supermarioworld"
+    assert _normalize_title("Super Mario World (USA).sfc.zip") == "supermarioworld"
+    assert _normalize_title("Chrono Trigger (USA).smc") == _normalize_title("Chrono Trigger (USA).sfc")
 
 def test_pick_best_version_usa_over_europe():
     g_eu = MagicMock(title="Dr. Mario (Europe)", region="Europe", languages="En")
